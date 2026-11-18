@@ -2,7 +2,7 @@
   "name": "review-surface",
   "displayName": "Review Surface",
   "description": "Unified live review of Git changes in the working editor, read-only by default.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "collinviz",
   "repository": {
     "type": "git",

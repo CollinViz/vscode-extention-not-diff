@@ -3,4 +3,6 @@ dist/
 out-test/
 .vscode-test/
 *.vsix
+*.png
+*.log
 coverage/
