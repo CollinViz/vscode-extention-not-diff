@@ -1,0 +1,228 @@
+{
+  "name": "review-surface",
+  "displayName": "Review Surface",
+  "description": "Unified live review of Git changes in the working editor, read-only by default.",
+  "version": "0.1.0",
+  "publisher": "collinviz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CollinViz/vscode-extention-not-diff.git"
+  },
+  "homepage": "https://github.com/CollinViz/vscode-extention-not-diff#readme",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/CollinViz/vscode-extention-not-diff/issues"
+  },
+  "engines": {
+    "vscode": "^1.90.0",
+    "node": ">=20"
+  },
+  "categories": [
+    "Other",
+    "SCM"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onView:review-surface.changes",
+    "onStartupFinished",
+    "onCommand:review-surface.refresh",
+    "onCommand:review-surface.toggleViewMode",
+    "onCommand:review-surface.setScopeLastN",
+    "onCommand:review-surface.setScopeDateRange",
+    "onCommand:review-surface.openFile",
+    "onCommand:review-surface.openDiffVsBase",
+    "onCommand:review-surface.toggleEditMode"
+  ],
+  "scripts": {
+    "compile": "tsc -p tsconfig.json --noEmit",
+    "compile:tests": "tsc -p tsconfig.integration.json",
+    "lint": "eslint .",
+    "build": "node esbuild.mjs",
+    "test:unit": "vitest run",
+    "test:integration": "npm run build && npm run compile:tests && node ./out-test/test/integration/runTest.js",
+    "check": "npm run compile && npm run lint && npm run build && npm run test:unit && npm run test:integration"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.17.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^2.4.1",
+    "esbuild": "^0.24.0",
+    "eslint": "^9.18.0",
+    "mocha": "^10.8.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^2.1.8",
+    "globals": "^17.14.0"
+  },
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "review-surface",
+          "title": "Review Surface",
+          "icon": "media/activity-bar.svg"
+        }
+      ]
+    },
+    "views": {
+      "review-surface": [
+        {
+          "id": "review-surface.changes",
+          "name": "Changed Files",
+          "contextualTitle": "Review Surface"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "review-surface.refresh",
+        "title": "Refresh Review Surface",
+        "category": "Review Surface"
+      },
+      {
+        "command": "review-surface.toggleViewMode",
+        "title": "Toggle Tree / Flat List",
+        "category": "Review Surface"
+      },
+      {
+        "command": "review-surface.setScopeLastN",
+        "title": "Set Scope: Last N Commits",
+        "category": "Review Surface"
+      },
+      {
+        "command": "review-surface.setScopeDateRange",
+        "title": "Set Scope",
+        "category": "Review Surface"
+      },
+      {
+        "command": "review-surface.openFile",
+        "title": "Open File in Review Surface",
+        "category": "Review Surface"
+      },
+      {
+        "command": "review-surface.openDiffVsBase",
+        "title": "Open Diff vs Base",
+        "category": "Review Surface"
+      },
+      {
+        "command": "review-surface.toggleEditMode",
+        "title": "Toggle Review Edit Mode",
+        "category": "Review Surface"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "review-surface.toggleViewMode",
+          "when": "view == review-surface.changes && reviewSurface.viewIsTree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "review-surface.toggleViewMode",
+          "when": "view == review-surface.changes && !reviewSurface.viewIsTree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "review-surface.setScopeLastN",
+          "when": "view == review-surface.changes",
+          "group": "navigation@2"
+        },
+        {
+          "command": "review-surface.setScopeDateRange",
+          "when": "view == review-surface.changes",
+          "group": "navigation@3"
+        },
+        {
+          "command": "review-surface.refresh",
+          "when": "view == review-surface.changes",
+          "group": "navigation@4"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "review-surface.toggleEditMode",
+          "when": "reviewSurface.isReviewFile && reviewSurface.isReadOnly",
+          "group": "navigation@1"
+        },
+        {
+          "command": "review-surface.toggleEditMode",
+          "when": "reviewSurface.isReviewFile && !reviewSurface.isReadOnly",
+          "group": "navigation@1"
+        },
+        {
+          "command": "review-surface.openDiffVsBase",
+          "when": "reviewSurface.isReviewFile",
+          "group": "navigation@2"
+        }
+      ],
+      "editor/lineNumber/context": [
+        {
+          "command": "review-surface.openDiffVsBase",
+          "when": "reviewSurface.isReviewFile",
+          "group": "review@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "review-surface.openFile",
+          "when": "false"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "review-surface.toggleEditMode",
+        "key": "alt+r",
+        "mac": "alt+r",
+        "when": "editorTextFocus && reviewSurface.isReviewFile"
+      },
+      {
+        "command": "review-surface.openDiffVsBase",
+        "key": "alt+d",
+        "mac": "alt+d",
+        "when": "editorTextFocus && reviewSurface.isReviewFile"
+      }
+    ],
+    "colors": [
+      {
+        "id": "reviewSurface.addedLineBackground",
+        "description": "Background tint for added lines in Review Surface (alpha from ADDED_LINE_ALPHA).",
+        "defaults": {
+          "dark": "rgba(46, 160, 67, 0.28)",
+          "light": "rgba(46, 160, 67, 0.22)",
+          "highContrast": "rgba(46, 160, 67, 0.35)",
+          "highContrastLight": "rgba(46, 160, 67, 0.35)"
+        }
+      },
+      {
+        "id": "reviewSurface.modifiedLineBackground",
+        "description": "Background tint for modified lines in Review Surface (alpha from MODIFIED_LINE_ALPHA).",
+        "defaults": {
+          "dark": "rgba(56, 139, 253, 0.28)",
+          "light": "rgba(9, 105, 218, 0.20)",
+          "highContrast": "rgba(56, 139, 253, 0.35)",
+          "highContrastLight": "rgba(9, 105, 218, 0.35)"
+        }
+      }
+    ],
+    "configuration": {
+      "title": "Review Surface",
+      "properties": {
+        "reviewSurface.defaultCommitCount": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "description": "Default N offered by the Last-N scope picker (DEFAULT_COMMIT_COUNT = 10)."
+        },
+        "reviewSurface.debounceRefreshMs": {
+          "type": "number",
+          "default": 300,
+          "minimum": 50,
+          "description": "Debounce delay in ms for live-sync refresh (DEBOUNCE_REFRESH_MS)."
+        }
+      }
+    }
+  }
+}

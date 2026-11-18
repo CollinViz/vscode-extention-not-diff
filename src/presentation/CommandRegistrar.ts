@@ -1,0 +1,240 @@
+import {
+  CFG_DEFAULT_COMMIT_COUNT,
+  CMD_INTERNAL_SET_SCOPE,
+  CMD_INTERNAL_STATE,
+  CMD_INTERNAL_TREE,
+  CMD_OPEN_DIFF,
+  CMD_OPEN_FILE,
+  CMD_REFRESH,
+  CMD_SET_SCOPE_DATE_RANGE,
+  CMD_SET_SCOPE_LAST_N,
+  CMD_TOGGLE_EDIT_MODE,
+  CMD_TOGGLE_VIEW_MODE,
+  TEST_ENV_ENABLED,
+  TEST_ENV_VAR
+} from '../config/identifiers';
+import { DEFAULT_COMMIT_COUNT, MIN_COMMIT_COUNT } from '../config/constants';
+import type { ReviewCoordinator } from '../application/ReviewCoordinator';
+import type { ReviewScope } from '../domain/models';
+import { encodeBaseUri } from '../util/reviewUri';
+import { absoluteFromRoot, toPosixPath } from '../util/paths';
+import type { DiffDecorationManager } from './DiffDecorationManager';
+import { openDiffVsBase } from './DiffOpener';
+import type { ReadOnlySessionController } from './ReadOnlySessionController';
+import type { ReviewTreeDataProvider } from './ReviewTreeDataProvider';
+import { CUSTOM_DATE_PLACEHOLDER, SCOPE_BRANCH_ID, SCOPE_PRESET_ITEMS } from './scopePrompts';
+import type { OpenFileArgs } from './treeItemFactory';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type VscodeLike = any;
+
+export interface CommandContext {
+  vscode: VscodeLike;
+  coordinator: ReviewCoordinator;
+  treeProvider: ReviewTreeDataProvider;
+  decorations: DiffDecorationManager;
+  readOnly: ReadOnlySessionController;
+}
+
+export function registerCommands(context: CommandContext): VscodeLike[] {
+  const { vscode, coordinator, treeProvider, decorations, readOnly } = context;
+  void treeProvider;
+  const disposables: VscodeLike[] = [];
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_REFRESH, async () => {
+      await coordinator.refresh();
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_TOGGLE_VIEW_MODE, async () => {
+      await coordinator.toggleViewMode();
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_SET_SCOPE_LAST_N, async () => {
+      await promptLastN(vscode, coordinator);
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_SET_SCOPE_DATE_RANGE, async () => {
+      await promptScope(vscode, coordinator);
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_OPEN_FILE, async (args: OpenFileArgs) => {
+      await readOnly.openReviewFile(args);
+      decorations.refreshForEditor(vscode.window.activeTextEditor);
+      await readOnly.syncActiveEditor();
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_OPEN_DIFF, async (args?: Partial<OpenFileArgs>) => {
+      await openDiffVsBase(
+        vscode,
+        encodeBaseUri,
+        () => findActiveChangedFile(vscode, coordinator),
+        args?.repoRoot ? (args as OpenFileArgs) : undefined
+      );
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_TOGGLE_EDIT_MODE, async () => {
+      await readOnly.toggleEditMode();
+      decorations.refreshForEditor(vscode.window.activeTextEditor);
+      await readOnly.syncActiveEditor();
+    })
+  );
+
+  if (process.env[TEST_ENV_VAR] === TEST_ENV_ENABLED) {
+    disposables.push(
+      vscode.commands.registerCommand(CMD_INTERNAL_STATE, async () => buildTestSnapshot(vscode, coordinator, decorations, readOnly))
+    );
+    disposables.push(
+      vscode.commands.registerCommand(CMD_INTERNAL_TREE, async () => {
+        const snapshot = coordinator.getSnapshot();
+        return JSON.parse(
+          JSON.stringify(
+            snapshot.tree.map((node) => serializeTree(node, []))
+          )
+        );
+      })
+    );
+    disposables.push(
+      vscode.commands.registerCommand(CMD_INTERNAL_SET_SCOPE, async (scope: ReviewScope) => {
+        await coordinator.setScope(scope);
+        return buildTestSnapshot(vscode, coordinator, decorations, readOnly);
+      })
+    );
+  }
+
+  return disposables;
+}
+
+async function promptLastN(vscode: VscodeLike, coordinator: ReviewCoordinator): Promise<void> {
+  const configuredDefault = vscode.workspace.getConfiguration().get(CFG_DEFAULT_COMMIT_COUNT, DEFAULT_COMMIT_COUNT);
+  const raw = await vscode.window.showInputBox({
+    prompt: 'Show changes from the last N commits',
+    placeHolder: String(configuredDefault),
+    validateInput: (value: string) => {
+      const parsed = Number(value);
+      if (!Number.isInteger(parsed) || parsed < MIN_COMMIT_COUNT) {
+        return `Enter an integer >= ${MIN_COMMIT_COUNT}`;
+      }
+      return null;
+    }
+  });
+  if (raw === undefined) {
+    return;
+  }
+  try {
+    await coordinator.setLastN(Number(raw));
+  } catch (error) {
+    await vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error));
+  }
+}
+
+async function promptScope(vscode: VscodeLike, coordinator: ReviewCoordinator): Promise<void> {
+  const picked = await vscode.window.showQuickPick(
+    SCOPE_PRESET_ITEMS.map((item) => ({ label: item.label, presetId: item.presetId })),
+    { placeHolder: 'Select a review scope' }
+  );
+  if (!picked) {
+    return;
+  }
+  try {
+    if (picked.presetId === SCOPE_BRANCH_ID) {
+      await coordinator.setScope({ kind: 'branch' });
+    } else if (picked.presetId === 'last-n') {
+      await promptLastN(vscode, coordinator);
+    } else if (picked.presetId === 'custom') {
+      const start = await vscode.window.showInputBox({ prompt: 'Start date', placeHolder: CUSTOM_DATE_PLACEHOLDER });
+      if (!start) {
+        return;
+      }
+      const end = await vscode.window.showInputBox({ prompt: 'End date', placeHolder: CUSTOM_DATE_PLACEHOLDER });
+      if (!end) {
+        return;
+      }
+      await coordinator.setCustomDateRange(start, end);
+    } else {
+      await coordinator.setDatePreset(picked.presetId);
+    }
+  } catch (error) {
+    await vscode.window.showErrorMessage(error instanceof Error ? error.message : String(error));
+  }
+}
+
+function findActiveChangedFile(
+  vscode: VscodeLike,
+  coordinator: ReviewCoordinator
+): { repoRoot: string; baseCommit: string; relativePath: string; previousPath: string | null } | null {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || editor.document.uri.scheme !== 'file') {
+    return null;
+  }
+  const fsPath = toPosixPath(editor.document.uri.fsPath);
+  const snapshot = coordinator.getSnapshot();
+  for (const file of snapshot.files) {
+    if (toPosixPath(absoluteFromRoot(file.repo.rootPath, file.relativePath)) === fsPath) {
+      return { repoRoot: file.repo.rootPath, baseCommit: file.baseCommit, relativePath: file.relativePath, previousPath: file.previousPath };
+    }
+  }
+  return null;
+}
+
+async function buildTestSnapshot(
+  vscode: VscodeLike,
+  coordinator: ReviewCoordinator,
+  decorations: DiffDecorationManager,
+  readOnly: ReadOnlySessionController
+): Promise<unknown> {
+  const snapshot = coordinator.getSnapshot();
+  const editor = vscode.window.activeTextEditor;
+  return {
+    viewMode: snapshot.viewMode,
+    scopeLabel: snapshot.scopeLabel,
+    scope: snapshot.scope,
+    fileCount: snapshot.files.length,
+    fileKeys: snapshot.files.map((file) => `${file.repo.id}::${toPosixPath(file.relativePath)}`),
+    errors: snapshot.errors,
+    files: snapshot.files.map((file) => ({
+      repoRoot: file.repo.rootPath,
+      repoId: file.repo.id,
+      repoName: file.repo.name,
+      relativePath: toPosixPath(file.relativePath),
+      previousPath: file.previousPath,
+      baseCommit: file.baseCommit,
+      kind: file.kind
+    })),
+    tree: snapshot.tree.map((node) => serializeTree(node, [])),
+    activeEditor: editor
+      ? {
+          uri: editor.document.uri.toString(),
+          scheme: editor.document.uri.scheme,
+          fsPath: editor.document.uri.fsPath,
+          isReviewSession: readOnly.isReviewSession(editor.document.uri.fsPath),
+          posture: readOnly.postureFor(editor.document.uri.fsPath) ?? 'none',
+          decorationLineCount: decorations.decorationLineCountFor(editor.document.uri.fsPath)
+        }
+      : null
+  };
+}
+
+function serializeTree(node: { id: string; label: string; description: string; kind: string; children: readonly unknown[] }, parents: string[]): unknown {
+  const typed = node as { id: string; label: string; description: string; kind: string; children: readonly typeof node[] };
+  return {
+    id: typed.id,
+    label: typed.label,
+    description: typed.description,
+    kind: typed.kind,
+    parentLabels: parents,
+    children: typed.children.map((child) => serializeTree(child, [...parents, typed.label]))
+  };
+}

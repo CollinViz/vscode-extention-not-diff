@@ -1,0 +1,9 @@
+src/
+test/
+**/*.map
+tsconfig*.json
+eslint.config.mjs
+esbuild.mjs
+vitest.config.ts
+start.md
+instruction.md
