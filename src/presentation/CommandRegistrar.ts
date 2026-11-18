@@ -1,5 +1,7 @@
 import {
   CFG_DEFAULT_COMMIT_COUNT,
+  CMD_ENABLE_EDIT_MODE,
+  CMD_ENABLE_READ_ONLY,
   CMD_INTERNAL_SET_SCOPE,
   CMD_INTERNAL_STATE,
   CMD_INTERNAL_TREE,
@@ -10,6 +12,8 @@ import {
   CMD_REFRESH,
   CMD_SET_SCOPE_DATE_RANGE,
   CMD_SET_SCOPE_LAST_N,
+  CMD_SHOW_FLAT_VIEW,
+  CMD_SHOW_TREE_VIEW,
   CMD_TOGGLE_EDIT_MODE,
   CMD_TOGGLE_VIEW_MODE,
   TEST_ENV_ENABLED,
@@ -56,6 +60,22 @@ export function registerCommands(context: CommandContext): VscodeLike[] {
   );
 
   disposables.push(
+    vscode.commands.registerCommand(CMD_SHOW_FLAT_VIEW, async () => {
+      if (coordinator.getSnapshot().viewMode !== 'flat') {
+        await coordinator.toggleViewMode();
+      }
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_SHOW_TREE_VIEW, async () => {
+      if (coordinator.getSnapshot().viewMode !== 'tree') {
+        await coordinator.toggleViewMode();
+      }
+    })
+  );
+
+  disposables.push(
     vscode.commands.registerCommand(CMD_SET_SCOPE_LAST_N, async () => {
       await promptLastN(vscode, coordinator);
     })
@@ -91,6 +111,30 @@ export function registerCommands(context: CommandContext): VscodeLike[] {
       await readOnly.toggleEditMode();
       decorations.refreshForEditor(vscode.window.activeTextEditor);
       await readOnly.syncActiveEditor();
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_ENABLE_EDIT_MODE, async () => {
+      const snapshot = await buildTestSnapshot(vscode, coordinator, decorations, readOnly);
+      const posture = (snapshot as { activeEditor?: { posture?: string } | null }).activeEditor?.posture;
+      if (posture === 'read-only') {
+        await readOnly.toggleEditMode();
+        decorations.refreshForEditor(vscode.window.activeTextEditor);
+        await readOnly.syncActiveEditor();
+      }
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_ENABLE_READ_ONLY, async () => {
+      const snapshot = await buildTestSnapshot(vscode, coordinator, decorations, readOnly);
+      const posture = (snapshot as { activeEditor?: { posture?: string } | null }).activeEditor?.posture;
+      if (posture === 'editing') {
+        await readOnly.toggleEditMode();
+        decorations.refreshForEditor(vscode.window.activeTextEditor);
+        await readOnly.syncActiveEditor();
+      }
     })
   );
 

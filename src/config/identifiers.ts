@@ -3,11 +3,15 @@ export const VIEW_ID = 'review-surface.changes';
 
 export const CMD_REFRESH = 'review-surface.refresh';
 export const CMD_TOGGLE_VIEW_MODE = 'review-surface.toggleViewMode';
+export const CMD_SHOW_FLAT_VIEW = 'review-surface.showFlatView';
+export const CMD_SHOW_TREE_VIEW = 'review-surface.showTreeView';
 export const CMD_SET_SCOPE_LAST_N = 'review-surface.setScopeLastN';
 export const CMD_SET_SCOPE_DATE_RANGE = 'review-surface.setScopeDateRange';
 export const CMD_OPEN_FILE = 'review-surface.openFile';
 export const CMD_OPEN_DIFF = 'review-surface.openDiffVsBase';
 export const CMD_TOGGLE_EDIT_MODE = 'review-surface.toggleEditMode';
+export const CMD_ENABLE_EDIT_MODE = 'review-surface.enableEditMode';
+export const CMD_ENABLE_READ_ONLY = 'review-surface.enableReadOnly';
 export const CMD_NEXT_CHANGE = 'review-surface.nextChange';
 export const CMD_PREV_CHANGE = 'review-surface.previousChange';
 export const CMD_INTERNAL_STATE = 'review-surface.internal.getSnapshot';

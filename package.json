@@ -2,7 +2,7 @@
   "name": "review-surface",
   "displayName": "Review Surface",
   "description": "Unified live review of Git changes in the working editor, read-only by default.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "collinviz",
   "repository": {
     "type": "git",
@@ -27,11 +27,15 @@
     "onStartupFinished",
     "onCommand:review-surface.refresh",
     "onCommand:review-surface.toggleViewMode",
+    "onCommand:review-surface.showFlatView",
+    "onCommand:review-surface.showTreeView",
     "onCommand:review-surface.setScopeLastN",
     "onCommand:review-surface.setScopeDateRange",
     "onCommand:review-surface.openFile",
     "onCommand:review-surface.openDiffVsBase",
     "onCommand:review-surface.toggleEditMode",
+    "onCommand:review-surface.enableEditMode",
+    "onCommand:review-surface.enableReadOnly",
     "onCommand:review-surface.nextChange",
     "onCommand:review-surface.previousChange"
   ],
@@ -81,7 +85,8 @@
       {
         "command": "review-surface.refresh",
         "title": "Refresh Review Surface",
-        "category": "Review Surface"
+        "category": "Review Surface",
+        "icon": "$(refresh)"
       },
       {
         "command": "review-surface.toggleViewMode",
@@ -89,14 +94,28 @@
         "category": "Review Surface"
       },
       {
+        "command": "review-surface.showFlatView",
+        "title": "Show Flat List",
+        "category": "Review Surface",
+        "icon": "$(list-flat)"
+      },
+      {
+        "command": "review-surface.showTreeView",
+        "title": "Show Tree",
+        "category": "Review Surface",
+        "icon": "$(list-tree)"
+      },
+      {
         "command": "review-surface.setScopeLastN",
         "title": "Set Scope: Last N Commits",
-        "category": "Review Surface"
+        "category": "Review Surface",
+        "icon": "$(history)"
       },
       {
         "command": "review-surface.setScopeDateRange",
         "title": "Set Scope",
-        "category": "Review Surface"
+        "category": "Review Surface",
+        "icon": "$(filter)"
       },
       {
         "command": "review-surface.openFile",
@@ -106,7 +125,8 @@
       {
         "command": "review-surface.openDiffVsBase",
         "title": "Open Diff vs Base",
-        "category": "Review Surface"
+        "category": "Review Surface",
+        "icon": "$(diff)"
       },
       {
         "command": "review-surface.toggleEditMode",
@@ -114,79 +134,83 @@
         "category": "Review Surface"
       },
       {
+        "command": "review-surface.enableEditMode",
+        "title": "Switch to Editing",
+        "category": "Review Surface",
+        "icon": "$(unlock)"
+      },
+      {
+        "command": "review-surface.enableReadOnly",
+        "title": "Switch to Read-Only",
+        "category": "Review Surface",
+        "icon": "$(lock)"
+      },
+      {
         "command": "review-surface.nextChange",
         "title": "Review: Go to Next Change",
-        "category": "Review Surface"
+        "category": "Review Surface",
+        "icon": "$(arrow-down)"
       },
       {
         "command": "review-surface.previousChange",
         "title": "Review: Go to Previous Change",
-        "category": "Review Surface"
+        "category": "Review Surface",
+        "icon": "$(arrow-up)"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "review-surface.toggleViewMode",
+          "command": "review-surface.showFlatView",
           "when": "view == review-surface.changes && reviewSurface.viewIsTree",
-          "group": "navigation@1",
-          "icon": "media/icon-flat.svg"
+          "group": "navigation@1"
         },
         {
-          "command": "review-surface.toggleViewMode",
+          "command": "review-surface.showTreeView",
           "when": "view == review-surface.changes && !reviewSurface.viewIsTree",
-          "group": "navigation@1",
-          "icon": "media/icon-tree.svg"
+          "group": "navigation@1"
         },
         {
           "command": "review-surface.setScopeLastN",
           "when": "view == review-surface.changes",
-          "group": "navigation@2",
-          "icon": "media/icon-history.svg"
+          "group": "navigation@2"
         },
         {
           "command": "review-surface.setScopeDateRange",
           "when": "view == review-surface.changes",
-          "group": "navigation@3",
-          "icon": "media/icon-scope.svg"
+          "group": "navigation@3"
         },
         {
           "command": "review-surface.refresh",
           "when": "view == review-surface.changes",
-          "group": "navigation@4",
-          "icon": "media/icon-refresh.svg"
+          "group": "navigation@4"
         }
       ],
       "editor/title": [
         {
-          "command": "review-surface.toggleEditMode",
+          "command": "review-surface.enableEditMode",
           "when": "reviewSurface.isReviewFile && reviewSurface.isReadOnly",
-          "group": "navigation@1",
-          "icon": "media/icon-lock.svg"
+          "group": "navigation@1"
         },
         {
-          "command": "review-surface.toggleEditMode",
+          "command": "review-surface.enableReadOnly",
           "when": "reviewSurface.isReviewFile && !reviewSurface.isReadOnly",
-          "group": "navigation@1",
-          "icon": "media/icon-unlock.svg"
+          "group": "navigation@1"
         },
         {
           "command": "review-surface.openDiffVsBase",
           "when": "reviewSurface.isReviewFile",
-          "group": "navigation@2",
-          "icon": "media/icon-diff.svg"
+          "group": "navigation@2"
         },
         {
           "command": "review-surface.previousChange",
           "when": "reviewSurface.isReviewFile",
-          "group": "navigation@3",
-          "icon": "media/icon-prev-change.svg"
+          "group": "navigation@3"
         },
         {
           "command": "review-surface.nextChange",
           "when": "reviewSurface.isReviewFile",
-          "group": "navigation@3",
-          "icon": "media/icon-next-change.svg"
+          "group": "navigation@3"
         }
       ],
       "editor/lineNumber/context": [
@@ -199,6 +223,22 @@
       "commandPalette": [
         {
           "command": "review-surface.openFile",
+          "when": "false"
+        },
+        {
+          "command": "review-surface.showFlatView",
+          "when": "false"
+        },
+        {
+          "command": "review-surface.showTreeView",
+          "when": "false"
+        },
+        {
+          "command": "review-surface.enableEditMode",
+          "when": "false"
+        },
+        {
+          "command": "review-surface.enableReadOnly",
           "when": "false"
         }
       ]
