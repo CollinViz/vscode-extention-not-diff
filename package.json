@@ -117,44 +117,52 @@
         {
           "command": "review-surface.toggleViewMode",
           "when": "view == review-surface.changes && reviewSurface.viewIsTree",
-          "group": "navigation@1"
+          "group": "navigation@1",
+          "icon": "media/icon-flat.svg"
         },
         {
           "command": "review-surface.toggleViewMode",
           "when": "view == review-surface.changes && !reviewSurface.viewIsTree",
-          "group": "navigation@1"
+          "group": "navigation@1",
+          "icon": "media/icon-tree.svg"
         },
         {
           "command": "review-surface.setScopeLastN",
           "when": "view == review-surface.changes",
-          "group": "navigation@2"
+          "group": "navigation@2",
+          "icon": "media/icon-history.svg"
         },
         {
           "command": "review-surface.setScopeDateRange",
           "when": "view == review-surface.changes",
-          "group": "navigation@3"
+          "group": "navigation@3",
+          "icon": "media/icon-scope.svg"
         },
         {
           "command": "review-surface.refresh",
           "when": "view == review-surface.changes",
-          "group": "navigation@4"
+          "group": "navigation@4",
+          "icon": "media/icon-refresh.svg"
         }
       ],
       "editor/title": [
         {
           "command": "review-surface.toggleEditMode",
           "when": "reviewSurface.isReviewFile && reviewSurface.isReadOnly",
-          "group": "navigation@1"
+          "group": "navigation@1",
+          "icon": "media/icon-lock.svg"
         },
         {
           "command": "review-surface.toggleEditMode",
           "when": "reviewSurface.isReviewFile && !reviewSurface.isReadOnly",
-          "group": "navigation@1"
+          "group": "navigation@1",
+          "icon": "media/icon-unlock.svg"
         },
         {
           "command": "review-surface.openDiffVsBase",
           "when": "reviewSurface.isReviewFile",
-          "group": "navigation@2"
+          "group": "navigation@2",
+          "icon": "media/icon-diff.svg"
         }
       ],
       "editor/lineNumber/context": [

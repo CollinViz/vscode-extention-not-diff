@@ -341,7 +341,7 @@ The tree provider sets `TreeView.message` and `TreeView.description` to the acti
 
 **Where:** `media/`.
 
-Create real SVG files (not empty, not missing). Activity bar and toolbar icons fail the extension host if the path 404s. Requirements:
+Create real SVG files (not empty, not missing). Activity bar and toolbar icons fail the extension host if the path 404s. Toolbar/menu artwork is copied from VS Code's MIT-licensed Codicon set (16×16, `currentColor` fill) so buttons look native — `refresh`, `filter` (scope), `history` (last-N), `list-tree` / `list-flat` (view-mode toggle pair), `lock` / `unlock` (edit toggle states), `diff` (open diff). Every `view/title` and `editor/title` menu entry must declare its `icon` path, otherwise the button renders nothing:
 
 - `activity-bar.svg` — 24×24, simple document-with-mark glyph, `currentColor` or a single fill that is visible on the activity bar (VS Code tints activity-bar SVGs; use a filled path, no external images).
 - `gutter-changed.svg` — small 16×16 bar or dot, used as `gutterIconPath`. Must be visible on light and dark; prefer a theme-neutral mid blue (`#3B82F6`) because gutter icons are not always tinted.
