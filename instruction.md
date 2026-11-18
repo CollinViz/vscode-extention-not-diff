@@ -1249,6 +1249,17 @@ Real workspace (`phl/.worktrees/AKILI-559`: `akili-crm`, `rest-api`, `data-acces
 
 ---
 
+## 20. Amendment B — next/previous change navigation
+
+Change-hopping like the built-in diff editor (`F7` / `Shift+F7`), from the review file's editor title bar next to the edit toggle:
+
+- **Commands** (`src/config/identifiers.ts`, contributed in `package.json`): `review-surface.nextChange` ("Review: Go to Next Change"), `review-surface.previousChange` ("Review: Go to Previous Change"). Buttons in `editor/title` (`navigation@3`, `reviewSurface.isReviewFile`) with Codicon `arrow-down` / `arrow-up` artwork (`media/icon-next-change.svg`, `media/icon-prev-change.svg`). Keybindings `F7` / `Shift+F7` scoped to `editorTextFocus && reviewSurface.isReviewFile`.
+- **Pure logic** (`src/domain/changeNavigation.ts`, zero `vscode` imports): `changeLinesOf` (range starts + deletion anchors, deduped, sorted) and `findAdjacentChangeLine` (strictly-after / strictly-before the cursor line, wrapping to first/last with a `wrapped` flag; `null` when there are no changes).
+- **Action** (`DiffDecorationManager.goToChange`): resolves the active review file, moves the cursor to the adjacent change line and reveals it. No-ops (`false`) when the active editor is not a listed review file.
+- **Tests.** Unit (`test/unit/changeNavigation.test.ts`): dedupe, next/prev, both wrap directions, empty, single-line. Integration (`test/integration/suite/changeNavigation.test.ts`, before `branchScope` in `SUITE_FILES`): committed 10-line file with two dirty 1-line edits; cursor `0 → next → 2 → next → 7 → next → wrap 2 → prev → 7 → prev → 2`.
+
+---
+
 ## 18. Definition of done
 
 - Every requirement in `start.md` sections 1.1, 1.2, 1.3, 2, and 3 has a file location in this plan and an assertion in unit or integration tests.

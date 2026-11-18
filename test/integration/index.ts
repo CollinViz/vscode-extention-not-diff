@@ -8,6 +8,7 @@ const SUITE_FILES = [
   'scopeSwitching.test.js',
   'readOnlyAndEdit.test.js',
   'diffEscapeHatch.test.js',
+  'changeNavigation.test.js',
   'branchScope.test.js'
 ];
 

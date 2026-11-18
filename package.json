@@ -31,7 +31,9 @@
     "onCommand:review-surface.setScopeDateRange",
     "onCommand:review-surface.openFile",
     "onCommand:review-surface.openDiffVsBase",
-    "onCommand:review-surface.toggleEditMode"
+    "onCommand:review-surface.toggleEditMode",
+    "onCommand:review-surface.nextChange",
+    "onCommand:review-surface.previousChange"
   ],
   "scripts": {
     "compile": "tsc -p tsconfig.json --noEmit",
@@ -110,6 +112,16 @@
         "command": "review-surface.toggleEditMode",
         "title": "Toggle Review Edit Mode",
         "category": "Review Surface"
+      },
+      {
+        "command": "review-surface.nextChange",
+        "title": "Review: Go to Next Change",
+        "category": "Review Surface"
+      },
+      {
+        "command": "review-surface.previousChange",
+        "title": "Review: Go to Previous Change",
+        "category": "Review Surface"
       }
     ],
     "menus": {
@@ -163,6 +175,18 @@
           "when": "reviewSurface.isReviewFile",
           "group": "navigation@2",
           "icon": "media/icon-diff.svg"
+        },
+        {
+          "command": "review-surface.previousChange",
+          "when": "reviewSurface.isReviewFile",
+          "group": "navigation@3",
+          "icon": "media/icon-prev-change.svg"
+        },
+        {
+          "command": "review-surface.nextChange",
+          "when": "reviewSurface.isReviewFile",
+          "group": "navigation@3",
+          "icon": "media/icon-next-change.svg"
         }
       ],
       "editor/lineNumber/context": [
@@ -190,6 +214,18 @@
         "command": "review-surface.openDiffVsBase",
         "key": "alt+d",
         "mac": "alt+d",
+        "when": "editorTextFocus && reviewSurface.isReviewFile"
+      },
+      {
+        "command": "review-surface.nextChange",
+        "key": "f7",
+        "mac": "f7",
+        "when": "editorTextFocus && reviewSurface.isReviewFile"
+      },
+      {
+        "command": "review-surface.previousChange",
+        "key": "shift+f7",
+        "mac": "shift+f7",
         "when": "editorTextFocus && reviewSurface.isReviewFile"
       }
     ],

@@ -3,8 +3,10 @@ import {
   CMD_INTERNAL_SET_SCOPE,
   CMD_INTERNAL_STATE,
   CMD_INTERNAL_TREE,
+  CMD_NEXT_CHANGE,
   CMD_OPEN_DIFF,
   CMD_OPEN_FILE,
+  CMD_PREV_CHANGE,
   CMD_REFRESH,
   CMD_SET_SCOPE_DATE_RANGE,
   CMD_SET_SCOPE_LAST_N,
@@ -13,7 +15,7 @@ import {
   TEST_ENV_ENABLED,
   TEST_ENV_VAR
 } from '../config/identifiers';
-import { DEFAULT_COMMIT_COUNT, MIN_COMMIT_COUNT } from '../config/constants';
+import { CHANGE_DIRECTION_NEXT, CHANGE_DIRECTION_PREVIOUS, DEFAULT_COMMIT_COUNT, MIN_COMMIT_COUNT } from '../config/constants';
 import type { ReviewCoordinator } from '../application/ReviewCoordinator';
 import type { ReviewScope } from '../domain/models';
 import { encodeBaseUri } from '../util/reviewUri';
@@ -89,6 +91,18 @@ export function registerCommands(context: CommandContext): VscodeLike[] {
       await readOnly.toggleEditMode();
       decorations.refreshForEditor(vscode.window.activeTextEditor);
       await readOnly.syncActiveEditor();
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_NEXT_CHANGE, async () => {
+      await decorations.goToChange(CHANGE_DIRECTION_NEXT);
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_PREV_CHANGE, async () => {
+      await decorations.goToChange(CHANGE_DIRECTION_PREVIOUS);
     })
   );
 

@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import { COLOR_ADDED_LINE_BG, COLOR_MODIFIED_LINE_BG, CMD_OPEN_DIFF } from '../config/identifiers';
 import { ICON_GUTTER_CHANGED } from '../config/constants';
+import { changeLinesOf, findAdjacentChangeLine, type ChangeDirection } from '../domain/changeNavigation';
 import type { ChangedFile } from '../domain/models';
 import { absoluteFromRoot, toPosixPath } from '../util/paths';
 
@@ -90,6 +91,26 @@ export class DiffDecorationManager {
     this.addedType.dispose();
     this.modifiedType.dispose();
     this.deletionType.dispose();
+  }
+
+  async goToChange(direction: ChangeDirection): Promise<boolean> {
+    const editor = this.vscode.window.activeTextEditor;
+    if (!editor || editor.document.uri.scheme !== 'file') {
+      return false;
+    }
+    const file = this.findFile(editor.document.uri.fsPath);
+    if (!file) {
+      return false;
+    }
+    const lines = changeLinesOf(file.ranges, file.deletionAnchors);
+    const target = findAdjacentChangeLine(lines, editor.selection.active.line, direction);
+    if (!target) {
+      return false;
+    }
+    const position = new this.vscode.Position(target.line, 0);
+    editor.selection = new this.vscode.Selection(position, position);
+    editor.revealRange(new this.vscode.Range(position, position));
+    return true;
   }
 
   private findFile(fsPath: string): ChangedFile | undefined {

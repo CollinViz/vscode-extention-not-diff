@@ -87,6 +87,9 @@ export const INTEGRATION_TIMEOUT_MS = 120000;
 
 export const REMOTE_ORIGIN_FETCH_SPEC = '+refs/heads/*:refs/remotes/origin/*';
 export const REFS_REMOTES_PREFIX = 'refs/remotes/';
+export const CHANGE_DIRECTION_NEXT = 'next';
+export const CHANGE_DIRECTION_PREVIOUS = 'previous';
+
 export const ICON_GUTTER_CHANGED = 'gutter-changed.svg';
 export const BASE_BRANCH_CANDIDATES: readonly string[] = ['origin/master', 'origin/main', 'master', 'main'];
 export const ISO_DATE_PREFIX_LENGTH = 10;
