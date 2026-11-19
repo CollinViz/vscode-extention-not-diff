@@ -15,8 +15,11 @@ import {
   CMD_SHOW_FLAT_VIEW,
   CMD_SHOW_TREE_VIEW,
   CMD_CLEAR_REVIEWED,
+  CMD_DISABLE_FOCUS_MODE,
+  CMD_ENABLE_FOCUS_MODE,
   CMD_MARK_ALL_REVIEWED,
   CMD_TOGGLE_EDIT_MODE,
+  CMD_TOGGLE_FOCUS_MODE,
   CMD_TOGGLE_REVIEWED,
   CMD_TOGGLE_VIEW_MODE,
   TEST_ENV_ENABLED,
@@ -29,6 +32,7 @@ import type { ChangedFile, ReviewScope } from '../domain/models';
 import { encodeBaseUri } from '../util/reviewUri';
 import { absoluteFromRoot, toPosixPath } from '../util/paths';
 import type { DiffDecorationManager } from './DiffDecorationManager';
+import type { FocusModeController } from './FocusModeController';
 import { openDiffVsBase } from './DiffOpener';
 import type { ReadOnlySessionController } from './ReadOnlySessionController';
 import type { ReviewTreeDataProvider } from './ReviewTreeDataProvider';
@@ -44,10 +48,11 @@ export interface CommandContext {
   treeProvider: ReviewTreeDataProvider;
   decorations: DiffDecorationManager;
   readOnly: ReadOnlySessionController;
+  focus: FocusModeController;
 }
 
 export function registerCommands(context: CommandContext): VscodeLike[] {
-  const { vscode, coordinator, treeProvider, decorations, readOnly } = context;
+  const { vscode, coordinator, treeProvider, decorations, readOnly, focus } = context;
   void treeProvider;
   const disposables: VscodeLike[] = [];
 
@@ -120,7 +125,7 @@ export function registerCommands(context: CommandContext): VscodeLike[] {
 
   disposables.push(
     vscode.commands.registerCommand(CMD_ENABLE_EDIT_MODE, async () => {
-      const snapshot = await buildTestSnapshot(vscode, coordinator, decorations, readOnly);
+      const snapshot = await buildTestSnapshot(vscode, coordinator, decorations, readOnly, focus);
       const posture = (snapshot as { activeEditor?: { posture?: string } | null }).activeEditor?.posture;
       if (posture === 'read-only') {
         await readOnly.toggleEditMode();
@@ -132,7 +137,7 @@ export function registerCommands(context: CommandContext): VscodeLike[] {
 
   disposables.push(
     vscode.commands.registerCommand(CMD_ENABLE_READ_ONLY, async () => {
-      const snapshot = await buildTestSnapshot(vscode, coordinator, decorations, readOnly);
+      const snapshot = await buildTestSnapshot(vscode, coordinator, decorations, readOnly, focus);
       const posture = (snapshot as { activeEditor?: { posture?: string } | null }).activeEditor?.posture;
       if (posture === 'editing') {
         await readOnly.toggleEditMode();
@@ -175,9 +180,31 @@ export function registerCommands(context: CommandContext): VscodeLike[] {
     })
   );
 
+  disposables.push(
+    vscode.commands.registerCommand(CMD_TOGGLE_FOCUS_MODE, async () => {
+      await focus.toggle();
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_ENABLE_FOCUS_MODE, async () => {
+      if (!focus.isEnabled()) {
+        await focus.enable();
+      }
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_DISABLE_FOCUS_MODE, async () => {
+      if (focus.isEnabled()) {
+        await focus.disable();
+      }
+    })
+  );
+
   if (process.env[TEST_ENV_VAR] === TEST_ENV_ENABLED) {
     disposables.push(
-      vscode.commands.registerCommand(CMD_INTERNAL_STATE, async () => buildTestSnapshot(vscode, coordinator, decorations, readOnly))
+      vscode.commands.registerCommand(CMD_INTERNAL_STATE, async () => buildTestSnapshot(vscode, coordinator, decorations, readOnly, focus))
     );
     disposables.push(
       vscode.commands.registerCommand(CMD_INTERNAL_TREE, async () => {
@@ -192,7 +219,7 @@ export function registerCommands(context: CommandContext): VscodeLike[] {
     disposables.push(
       vscode.commands.registerCommand(CMD_INTERNAL_SET_SCOPE, async (scope: ReviewScope) => {
         await coordinator.setScope(scope);
-        return buildTestSnapshot(vscode, coordinator, decorations, readOnly);
+        return buildTestSnapshot(vscode, coordinator, decorations, readOnly, focus);
       })
     );
   }
@@ -297,7 +324,8 @@ async function buildTestSnapshot(
   vscode: VscodeLike,
   coordinator: ReviewCoordinator,
   decorations: DiffDecorationManager,
-  readOnly: ReadOnlySessionController
+  readOnly: ReadOnlySessionController,
+  focus: FocusModeController
 ): Promise<unknown> {
   const snapshot = coordinator.getSnapshot();
   const editor = vscode.window.activeTextEditor;
@@ -319,6 +347,11 @@ async function buildTestSnapshot(
       kind: file.kind
     })),
     tree: snapshot.tree.map((node) => serializeTree(node, [])),
+    focus: {
+      enabled: focus.isEnabled(),
+      contextLines: focus.contextLines(),
+      activeEditorFoldCount: editor ? focus.foldCountFor(editor.document.uri.fsPath) : 0
+    },
     activeEditor: editor
       ? {
           uri: editor.document.uri.toString(),

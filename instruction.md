@@ -1308,3 +1308,34 @@ v0.3 lifts two of the deliberate v0.1 exclusions (the "no reviewed" rule of §0.
 ### 22.3 What was deliberately not added
 
 No persistence across sessions, no per-directory reviewed aggregates, no "collapse reviewed files" behavior, no review timestamps. Those belong to the v0.4+ roadmap (`maybeToDo.md`), not to this release.
+
+---
+
+## 23. Amendment E — v0.3.1: focus mode (laser focus on changed lines)
+
+A toggle button next to the next/previous change buttons that hides every unmodified line which is not within `focusContextLines` (default 3, setting `reviewSurface.focusContextLines`) of a change, so an AI edit inside one function can be reviewed without the rest of the file. Not the default posture; a per-session toggle like the read-only one.
+
+### 23.1 How hiding works in VS Code (research result)
+
+There is no "hide lines" API. The VS Code team's prescribed mechanism (microsoft/vscode#37682, #108232, discussions#77): a `FoldingRangeProvider` defines the regions and `editor.fold` collapses them programmatically via `vscode.commands.executeCommand('editor.fold', { selectionLines: [startLines] })`. The native "N unmodified lines" bar the user knows is the **diff editor's** `diffEditor.hideUnchangedRegions` UI (with `contextLineCount`); it does not exist in normal editors, so the extension renders its own gray `⋯ N unmodified lines` after-text decoration on the fold chevron line (matching `editorGhostText.foreground`).
+
+Known pitfalls designed around:
+
+- A folding provider's *presence* disables indentation-based folding for every document it matches → the provider is registered only while focus mode is on, and its selector is scoped to the repositories in the current snapshot (`RelativePattern(repoRoot, '**/*')` per repo).
+- Provider ranges merge with language folding ranges; a tie on the same start line lets the earlier-registered (language) provider win → after folding, `editor.unfold` is sent for every changed start line so changed code can never stay hidden inside a language region.
+- The folding model updates asynchronously → `editor.fold` is sent after `FOLD_APPLY_DELAY_MS` (200 ms, constant).
+- Re-folding an already-collapsed region climbs to its parent → folds are applied once per document per focus session (`appliedDocs` set), not on every refresh.
+
+### 23.2 Implementation
+
+- **Domain** (`src/domain/focusFoldPlanner.ts`): pure `planFocusFolds({ highlights, deletionAnchors, lineCount, contextLines, minUnchangedLines })` → fold regions `{ start, end, hiddenCount }`. Padded changed windows are merged; every unchanged gap ≥ `MIN_FOCUS_UNCHANGED_LINES` (3, constant) becomes a fold whose chevron line is the last visible line above the gap (the gap's first line itself when the gap starts at the top of the file, because a fold region always keeps its first line visible). Head and tail gaps are folded like any other.
+- **Presentation** (`src/presentation/FocusModeController.ts`): session flag + `CTX_FOCUS_MODE` context key; registers/disposes the provider on enable/disable; fires `onDidChangeFoldingRanges` on snapshot changes; applies folds + hint decorations to the active review file on enable and on every later activation while focus is on; `editor.unfoldAll` when focus turns off (tracked docs only). `DiffDecorationManager.fileFor()`/`snapshotFiles()` expose the snapshot data it needs.
+- **Commands** (`identifiers.ts`, contributed in `package.json`): `review-surface.toggleFocusMode` (palette), paired buttons in `editor/title` `navigation@4` — `review-surface.enableFocusMode` ("Review: Focus Changed Lines", `$(fold-down)`) when `reviewSurface.isReviewFile && !reviewSurface.focusMode`, `review-surface.disableFocusMode` ("Review: Show Full File", `$(unfold)`) when focus is on.
+- **Setting**: `reviewSurface.focusContextLines` (default `DEFAULT_FOCUS_CONTEXT_LINES` = 3, minimum 0). Gaps shorter than `MIN_FOCUS_UNCHANGED_LINES` are never folded.
+- **F7 navigation still works**: revealing a folded line makes VS Code expand its region automatically.
+- **Tests**: unit — `focusFoldPlanner.test.ts` (head/tail folds, context padding, merged windows, far-apart gaps, anchors, minimum-gap skip, file edges, zero context, fully-changed file). Integration — `focusMode.test.ts`: a committed 40-line file with a dirty middle edit must produce exactly 2 fold regions (head + tail), keep the change decorations while focused, and return to 0 when focus is off. The Extension API cannot read folded state, so the suite asserts the fold *plan* and the toggle lifecycle; visual folding is verified by hand.
+- **Verified manually** on `/home/collin/workspace/phl/.worktrees/AKILI-418/data-access/databases/referrer.js` (see `maybeToDo.md` §7 for the workflow).
+
+### 23.3 Deliberate limitations
+
+Unfolded-by-hand regions are not re-folded until focus is toggled off/on or the file is re-opened; the `⋯ N unmodified lines` hint stays on the chevron line even after a manual expand; focus mode is not persisted across windows/reloads (session-only, like the reviewed state).
