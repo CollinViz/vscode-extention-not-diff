@@ -90,6 +90,14 @@ export const REFS_REMOTES_PREFIX = 'refs/remotes/';
 export const CHANGE_DIRECTION_NEXT = 'next';
 export const CHANGE_DIRECTION_PREVIOUS = 'previous';
 
+/**
+ * Opacity applied to unmodified lines when dim-unchanged is on.
+ * GitLens File Heatmap fades older lines down to 0.2; 0.4 keeps surrounding
+ * code readable while making the review diff the bright text.
+ */
+export const DEFAULT_UNCHANGED_LINE_OPACITY = 0.4;
+export const OPACITY_FRACTION_DIGITS = 2;
+
 export const ICON_GUTTER_CHANGED = 'gutter-changed.svg';
 /** Solid blue of the changed-line gutter bar and overview ruler marks. */
 export const CHANGE_BAR_COLOR = '#3B82F6';

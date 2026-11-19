@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { ReviewCoordinator } from './application/ReviewCoordinator';
 import { DEBOUNCE_REFRESH_MS } from './config/constants';
-import { CFG_DEBOUNCE_MS as CFG_DEBOUNCE_KEY, CTX_VIEW_IS_TREE, SCHEME_BASE, VIEW_ID } from './config/identifiers';
+import { CFG_DEBOUNCE_MS as CFG_DEBOUNCE_KEY, CFG_UNCHANGED_LINE_OPACITY, CTX_VIEW_IS_TREE, SCHEME_BASE, VIEW_ID } from './config/identifiers';
 import { GitChangeCollector } from './infrastructure/GitChangeCollector';
 import { GitCliExecutor } from './infrastructure/GitCliExecutor';
 import { MemoryReviewStateStore } from './infrastructure/MemoryReviewStateStore';
@@ -77,6 +77,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       decorations.refreshForEditor(editor as unknown as never);
       await readOnly.syncActiveEditor();
       coordinator.scheduleRefresh();
+    }),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration(CFG_UNCHANGED_LINE_OPACITY)) {
+        decorations.reloadDimDecoration();
+        decorations.refreshForEditor(vscode.window.activeTextEditor as unknown as never);
+      }
     }),
     vscode.workspace.createFileSystemWatcher('**/*')
   );

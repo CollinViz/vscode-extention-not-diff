@@ -2,7 +2,7 @@
   "name": "review-surface",
   "displayName": "Review Surface",
   "description": "Unified live review of Git changes in the working editor, read-only by default.",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "publisher": "collinviz",
   "repository": {
     "type": "git",
@@ -40,7 +40,10 @@
     "onCommand:review-surface.previousChange",
     "onCommand:review-surface.toggleReviewed",
     "onCommand:review-surface.markAllReviewed",
-    "onCommand:review-surface.clearReviewed"
+    "onCommand:review-surface.clearReviewed",
+    "onCommand:review-surface.toggleDimUnchanged",
+    "onCommand:review-surface.enableDimUnchanged",
+    "onCommand:review-surface.disableDimUnchanged"
   ],
   "scripts": {
     "compile": "tsc -p tsconfig.json --noEmit",
@@ -177,6 +180,23 @@
         "title": "Review: Clear Reviewed State",
         "category": "Review Surface",
         "icon": "$(clear-all)"
+      },
+      {
+        "command": "review-surface.toggleDimUnchanged",
+        "title": "Review: Toggle Dim Unchanged Lines",
+        "category": "Review Surface"
+      },
+      {
+        "command": "review-surface.enableDimUnchanged",
+        "title": "Review: Dim Unchanged Lines",
+        "category": "Review Surface",
+        "icon": "$(flame)"
+      },
+      {
+        "command": "review-surface.disableDimUnchanged",
+        "title": "Review: Show Lines at Full Strength",
+        "category": "Review Surface",
+        "icon": "$(eye)"
       }
     ],
     "menus": {
@@ -232,6 +252,16 @@
           "command": "review-surface.nextChange",
           "when": "reviewSurface.isReviewFile",
           "group": "navigation@3"
+        },
+        {
+          "command": "review-surface.enableDimUnchanged",
+          "when": "reviewSurface.isReviewFile && !reviewSurface.dimUnchanged",
+          "group": "navigation@4"
+        },
+        {
+          "command": "review-surface.disableDimUnchanged",
+          "when": "reviewSurface.isReviewFile && reviewSurface.dimUnchanged",
+          "group": "navigation@4"
         }
       ],
       "editor/lineNumber/context": [
@@ -272,6 +302,14 @@
         {
           "command": "review-surface.toggleReviewed",
           "when": "reviewSurface.isReviewFile"
+        },
+        {
+          "command": "review-surface.enableDimUnchanged",
+          "when": "false"
+        },
+        {
+          "command": "review-surface.disableDimUnchanged",
+          "when": "false"
         }
       ]
     },
@@ -315,6 +353,13 @@
           "default": 300,
           "minimum": 50,
           "description": "Debounce delay in ms for live-sync refresh (DEBOUNCE_REFRESH_MS)."
+        },
+        "reviewSurface.unchangedLineOpacity": {
+          "type": "number",
+          "default": 0.4,
+          "minimum": 0.15,
+          "maximum": 0.85,
+          "description": "Opacity of unmodified lines when Dim Unchanged is on (DEFAULT_UNCHANGED_LINE_OPACITY = 0.4). Changed lines stay at full strength."
         }
       }
     }

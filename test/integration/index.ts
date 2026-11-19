@@ -6,6 +6,7 @@ const SUITE_FILES = [
   'multiRepoTree.test.js',
   'flatListToggle.test.js',
   'countsAndReviewed.test.js',
+  'dimUnchanged.test.js',
   'scopeSwitching.test.js',
   'readOnlyAndEdit.test.js',
   'diffEscapeHatch.test.js',

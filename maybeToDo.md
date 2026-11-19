@@ -193,3 +193,18 @@ loop to Review Surface** rather than adopt a plugin — OpenCode runs in this ha
 - OpenCode plugin ecosystem: opendock.net, GitHub (oorestisime/opencode-diffs,
   wuwei-apc/opencode-diff-review, bronteee/code-stroll, zapsaang/oh-my-review-experts),
   npm (opencode-diff, opencode-diff-feedback, mark-opencode, @plannotator/opencode)
+
+---
+
+## 7. GitLens File Heatmap — why the non-change text looks dull (v0.3.2)
+
+GitLens → Annotations → **File Heatmap** (`gitlens.toggleFileHeatmap`). Two layers:
+
+1. **Age bar.** `addOrUpdateGutterHeatmapDecoration` paints a gutter rect / overview mark whose color comes from a 10-step hot/cold scale (`getHeatmapColor`). Hot = recent, cold = older than `heatmap.ageThreshold` (default 90 days). Brightness is relative to the median age of commits *in that file*.
+2. **Dull text.** Setting `gitlens.heatmap.fadeLines` (added 2022-05, commit `140babd`) sets the decoration's `opacity` to `computeOpacity(date)`: `Math.max(0.2, 1 - age / steps)`. Newest lines stay at 1; the oldest drop to 0.2. `isWholeLine: true`. The opacity string includes `!important` because theme CSS otherwise overrides decoration opacity.
+
+That second layer is what reads as "non-commit text is dull." It does not hide lines, so folding's chevron/indent fights never happen.
+
+**What we shipped instead of a blame heatmap:** Review Surface already knows the review diff, so v0.3.2 fades every line that is *not* in the current change (highlight ranges + deletion anchors) to `reviewSurface.unchangedLineOpacity` (default 0.4). Changed lines keep the diff-green background and blue gutter at full strength. No `git blame`, no age scale — those would dim last week's commit the same as code from 2019, which is the wrong cut for "what did this branch change." Toggle is the flame button next to F7, off by default.
+
+Sources: gitkraken/vscode-gitlens `src/annotations/annotations.ts`, `gutterHeatmapBlameAnnotationProvider.ts`, help.gitkraken.com File Heatmap, commit `140babd`.

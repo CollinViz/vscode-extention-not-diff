@@ -17,6 +17,9 @@ export const CMD_PREV_CHANGE = 'review-surface.previousChange';
 export const CMD_TOGGLE_REVIEWED = 'review-surface.toggleReviewed';
 export const CMD_MARK_ALL_REVIEWED = 'review-surface.markAllReviewed';
 export const CMD_CLEAR_REVIEWED = 'review-surface.clearReviewed';
+export const CMD_TOGGLE_DIM_UNCHANGED = 'review-surface.toggleDimUnchanged';
+export const CMD_ENABLE_DIM_UNCHANGED = 'review-surface.enableDimUnchanged';
+export const CMD_DISABLE_DIM_UNCHANGED = 'review-surface.disableDimUnchanged';
 export const CMD_INTERNAL_STATE = 'review-surface.internal.getSnapshot';
 export const CMD_INTERNAL_TREE = 'review-surface.internal.getTree';
 export const CMD_INTERNAL_SET_SCOPE = 'review-surface.internal.setScope';
@@ -24,9 +27,11 @@ export const CMD_INTERNAL_SET_SCOPE = 'review-surface.internal.setScope';
 export const CTX_REVIEW_FILE = 'reviewSurface.isReviewFile';
 export const CTX_READ_ONLY = 'reviewSurface.isReadOnly';
 export const CTX_VIEW_IS_TREE = 'reviewSurface.viewIsTree';
+export const CTX_DIM_UNCHANGED = 'reviewSurface.dimUnchanged';
 
 export const CFG_DEFAULT_COMMIT_COUNT = 'reviewSurface.defaultCommitCount';
 export const CFG_DEBOUNCE_MS = 'reviewSurface.debounceRefreshMs';
+export const CFG_UNCHANGED_LINE_OPACITY = 'reviewSurface.unchangedLineOpacity';
 
 /**
  * Built-in VS Code diff editor theme colors. Reusing them makes review

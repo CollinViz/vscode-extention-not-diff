@@ -15,10 +15,14 @@ import {
   CMD_SHOW_FLAT_VIEW,
   CMD_SHOW_TREE_VIEW,
   CMD_CLEAR_REVIEWED,
+  CMD_DISABLE_DIM_UNCHANGED,
+  CMD_ENABLE_DIM_UNCHANGED,
   CMD_MARK_ALL_REVIEWED,
+  CMD_TOGGLE_DIM_UNCHANGED,
   CMD_TOGGLE_EDIT_MODE,
   CMD_TOGGLE_REVIEWED,
   CMD_TOGGLE_VIEW_MODE,
+  CTX_DIM_UNCHANGED,
   TEST_ENV_ENABLED,
   TEST_ENV_VAR
 } from '../config/identifiers';
@@ -175,6 +179,24 @@ export function registerCommands(context: CommandContext): VscodeLike[] {
     })
   );
 
+  disposables.push(
+    vscode.commands.registerCommand(CMD_TOGGLE_DIM_UNCHANGED, async () => {
+      await setDimUnchanged(vscode, decorations, !decorations.isDimUnchanged());
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_ENABLE_DIM_UNCHANGED, async () => {
+      await setDimUnchanged(vscode, decorations, true);
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_DISABLE_DIM_UNCHANGED, async () => {
+      await setDimUnchanged(vscode, decorations, false);
+    })
+  );
+
   if (process.env[TEST_ENV_VAR] === TEST_ENV_ENABLED) {
     disposables.push(
       vscode.commands.registerCommand(CMD_INTERNAL_STATE, async () => buildTestSnapshot(vscode, coordinator, decorations, readOnly))
@@ -254,6 +276,12 @@ async function promptScope(vscode: VscodeLike, coordinator: ReviewCoordinator): 
   }
 }
 
+async function setDimUnchanged(vscode: VscodeLike, decorations: DiffDecorationManager, enabled: boolean): Promise<void> {
+  decorations.setDimUnchanged(enabled);
+  await vscode.commands.executeCommand('setContext', CTX_DIM_UNCHANGED, enabled);
+  decorations.refreshForEditor(vscode.window.activeTextEditor);
+}
+
 function findActiveChangedFile(
   vscode: VscodeLike,
   coordinator: ReviewCoordinator
@@ -308,6 +336,8 @@ async function buildTestSnapshot(
     fileCount: snapshot.files.length,
     fileKeys: snapshot.files.map((file) => `${file.repo.id}::${toPosixPath(file.relativePath)}`),
     reviewedKeys: [...coordinator.getReviewedKeys()],
+    dimUnchanged: decorations.isDimUnchanged(),
+    dimmedLineCount: editor ? decorations.dimmedLineCountFor(editor.document.uri.fsPath) : 0,
     errors: snapshot.errors,
     files: snapshot.files.map((file) => ({
       repoRoot: file.repo.rootPath,

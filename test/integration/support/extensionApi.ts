@@ -18,6 +18,8 @@ export interface TestSnapshot {
   readonly fileCount: number;
   readonly fileKeys: string[];
   readonly reviewedKeys: string[];
+  readonly dimUnchanged: boolean;
+  readonly dimmedLineCount: number;
   readonly errors: string[];
   readonly files: TestFileEntry[];
   readonly tree: TestTreeNode[];

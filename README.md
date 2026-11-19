@@ -17,6 +17,9 @@ to type; highlights stay on.
   changes are always included
 - **Diff escape hatches**: hover the highlighted lines, right-click the line
   number, or press `Alt+D` — a traditional diff opens only when you ask for it
+- **Dim unchanged lines** (GitLens heatmap-style): a flame button next to the
+  next/previous change arrows fades unmodified lines so the diff stays bright.
+  Off by default. Opacity is `reviewSurface.unchangedLineOpacity` (default 0.4)
 
 ## Develop
 

@@ -1308,3 +1308,17 @@ v0.3 lifts two of the deliberate v0.1 exclusions (the "no reviewed" rule of §0.
 ### 22.3 What was deliberately not added
 
 No persistence across sessions, no per-directory reviewed aggregates, no "collapse reviewed files" behavior, no review timestamps. Those belong to the v0.4+ roadmap (`maybeToDo.md`), not to this release.
+
+---
+
+## 23. Amendment F — v0.3.2: dim unchanged lines (GitLens heatmap fade)
+
+Folding unmodified lines (v0.3.1, reverted) fought the editor. GitLens File Heatmap does the same job without hiding anything: `gitlens.heatmap.fadeLines` sets a whole-line decoration `opacity` (`computeOpacity` floors at 0.2, newest lines stay at 1) so older text goes dull and recent text stays bright. The gutter/line color is a separate age scale; the dull text is the fade.
+
+Review Surface does not run blame. The equivalent split is "in this review's diff" vs "not":
+
+- **Domain** (`src/domain/unchangedLines.ts`): `unchangedLineRanges(lineCount, highlights, anchors)` — every line outside a highlight range or deletion anchor. Empty when no change can be placed, so a file is never dimmed end to end by accident.
+- **Decoration** (`DiffDecorationManager`): one whole-line type, `opacity: '<setting> !important'` (the `!important` is required; theme CSS otherwise wins — same trick GitLens uses). Changed-line background and gutter bar are a different decoration type and stay at full strength. Applied only while the session toggle is on.
+- **Toggle**, off by default, session-only. Editor title `navigation@4`, next to next/previous change: `review-surface.enableDimUnchanged` (`$(flame)`, "Dim Unchanged Lines") / `review-surface.disableDimUnchanged` (`$(eye)`, "Show Lines at Full Strength"), gated on `reviewSurface.dimUnchanged`. Palette command `review-surface.toggleDimUnchanged`.
+- **Setting** `reviewSurface.unchangedLineOpacity`, default `DEFAULT_UNCHANGED_LINE_OPACITY` = 0.4. Changing it disposes and recreates the decoration type.
+- **Tests**: unit `unchangedLines.test.ts`. Integration `dimUnchanged.test.ts` asserts the toggle and that change decorations are not cleared. Opacity itself is not readable from the Extension API.
