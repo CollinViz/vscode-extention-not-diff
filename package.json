@@ -2,7 +2,7 @@
   "name": "review-surface",
   "displayName": "Review Surface",
   "description": "Unified live review of Git changes in the working editor, read-only by default.",
-  "version": "0.3.1",
+  "version": "0.3.0",
   "publisher": "collinviz",
   "repository": {
     "type": "git",
@@ -40,10 +40,7 @@
     "onCommand:review-surface.previousChange",
     "onCommand:review-surface.toggleReviewed",
     "onCommand:review-surface.markAllReviewed",
-    "onCommand:review-surface.clearReviewed",
-    "onCommand:review-surface.toggleFocusMode",
-    "onCommand:review-surface.enableFocusMode",
-    "onCommand:review-surface.disableFocusMode"
+    "onCommand:review-surface.clearReviewed"
   ],
   "scripts": {
     "compile": "tsc -p tsconfig.json --noEmit",
@@ -180,23 +177,6 @@
         "title": "Review: Clear Reviewed State",
         "category": "Review Surface",
         "icon": "$(clear-all)"
-      },
-      {
-        "command": "review-surface.toggleFocusMode",
-        "title": "Review: Toggle Focus Mode (hide unmodified lines)",
-        "category": "Review Surface"
-      },
-      {
-        "command": "review-surface.enableFocusMode",
-        "title": "Review: Focus Changed Lines",
-        "category": "Review Surface",
-        "icon": "$(fold-down)"
-      },
-      {
-        "command": "review-surface.disableFocusMode",
-        "title": "Review: Show Full File",
-        "category": "Review Surface",
-        "icon": "$(unfold)"
       }
     ],
     "menus": {
@@ -244,19 +224,14 @@
           "group": "navigation@2"
         },
         {
-          "command": "review-surface.nextChange",
+          "command": "review-surface.previousChange",
           "when": "reviewSurface.isReviewFile",
           "group": "navigation@3"
         },
         {
-          "command": "review-surface.enableFocusMode",
-          "when": "reviewSurface.isReviewFile && !reviewSurface.focusMode",
-          "group": "navigation@4"
-        },
-        {
-          "command": "review-surface.disableFocusMode",
-          "when": "reviewSurface.isReviewFile && reviewSurface.focusMode",
-          "group": "navigation@4"
+          "command": "review-surface.nextChange",
+          "when": "reviewSurface.isReviewFile",
+          "group": "navigation@3"
         }
       ],
       "editor/lineNumber/context": [
@@ -297,14 +272,6 @@
         {
           "command": "review-surface.toggleReviewed",
           "when": "reviewSurface.isReviewFile"
-        },
-        {
-          "command": "review-surface.enableFocusMode",
-          "when": "false"
-        },
-        {
-          "command": "review-surface.disableFocusMode",
-          "when": "false"
         }
       ]
     },
@@ -348,12 +315,6 @@
           "default": 300,
           "minimum": 50,
           "description": "Debounce delay in ms for live-sync refresh (DEBOUNCE_REFRESH_MS)."
-        },
-        "reviewSurface.focusContextLines": {
-          "type": "number",
-          "default": 3,
-          "minimum": 0,
-          "description": "Unmodified lines kept visible above and below each change in Focus Mode (DEFAULT_FOCUS_CONTEXT_LINES = 3)."
         }
       }
     }

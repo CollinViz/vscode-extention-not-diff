@@ -10,7 +10,6 @@ const SUITE_FILES = [
   'readOnlyAndEdit.test.js',
   'diffEscapeHatch.test.js',
   'changeNavigation.test.js',
-  'focusMode.test.js',
   'branchScope.test.js'
 ];
 

@@ -70,16 +70,6 @@ export class DiffDecorationManager {
     return rangeLines + file.deletionAnchors.length;
   }
 
-  /** The snapshot file backing an editor document, or undefined. */
-  fileFor(fsPath: string): ChangedFile | undefined {
-    return this.findFile(fsPath);
-  }
-
-  /** Every file in the current snapshot (read-only view of the review set). */
-  snapshotFiles(): readonly ChangedFile[] {
-    return this.files;
-  }
-
   dispose(): void {
     this.changedType.dispose();
     this.deletionType.dispose();

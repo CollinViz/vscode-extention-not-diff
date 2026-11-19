@@ -90,16 +90,6 @@ export const REFS_REMOTES_PREFIX = 'refs/remotes/';
 export const CHANGE_DIRECTION_NEXT = 'next';
 export const CHANGE_DIRECTION_PREVIOUS = 'previous';
 
-/** Default unmodified context lines kept visible around changes in focus mode (git/diff convention). */
-export const DEFAULT_FOCUS_CONTEXT_LINES = 3;
-/** Unchanged gaps shorter than this are not worth a fold (the context padding already covers them). */
-export const MIN_FOCUS_UNCHANGED_LINES = 3;
-/**
- * Wait after registering the folding-range provider before sending `editor.fold`
- * so the editor has computed the new ranges (folding model updates are async).
- */
-export const FOLD_APPLY_DELAY_MS = 200;
-
 export const ICON_GUTTER_CHANGED = 'gutter-changed.svg';
 /** Solid blue of the changed-line gutter bar and overview ruler marks. */
 export const CHANGE_BAR_COLOR = '#3B82F6';

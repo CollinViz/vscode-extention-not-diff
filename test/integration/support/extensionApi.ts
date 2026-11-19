@@ -21,11 +21,6 @@ export interface TestSnapshot {
   readonly errors: string[];
   readonly files: TestFileEntry[];
   readonly tree: TestTreeNode[];
-  readonly focus: {
-    readonly enabled: boolean;
-    readonly contextLines: number;
-    readonly activeEditorFoldCount: number;
-  };
   readonly activeEditor: {
     readonly uri: string;
     readonly scheme: string;

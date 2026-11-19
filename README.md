@@ -17,11 +17,6 @@ to type; highlights stay on.
   changes are always included
 - **Diff escape hatches**: hover the highlighted lines, right-click the line
   number, or press `Alt+D` — a traditional diff opens only when you ask for it
-- **Focus Mode (laser focus)**: a fold/unfold button next to the next/previous
-  change arrows hides every unmodified line beyond `focusContextLines`
-  (default 3, a setting) around each change, with a gray
-  `⋯ N unmodified lines` marker at each collapsed block. Off by default;
-  toggles per session like the read-only posture.
 
 ## Develop
 

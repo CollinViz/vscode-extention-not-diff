@@ -15,7 +15,6 @@ import { DiffDecorationManager } from './presentation/DiffDecorationManager';
 import { openDiffVsBase } from './presentation/DiffOpener';
 import { ReadOnlySessionController } from './presentation/ReadOnlySessionController';
 import { ReviewTreeDataProvider } from './presentation/ReviewTreeDataProvider';
-import { FocusModeController } from './presentation/FocusModeController';
 import { encodeBaseUri } from './util/reviewUri';
 import { DisposableStore } from './util/disposables';
 import { absoluteFromRoot, toPosixPath } from './util/paths';
@@ -39,7 +38,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const decorations = new DiffDecorationManager(vscode as unknown as never, context.extensionPath);
   const readOnlyAdapter = new VsCodeReadOnlyAdapter(vscode as unknown as never);
-  const focus = new FocusModeController(vscode as unknown as never, decorations);
 
   const readOnly: ReadOnlySessionController = new ReadOnlySessionController(
     vscode as unknown as never,
@@ -63,12 +61,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       treeProvider.onSnapshot(snapshot);
       decorations.setFiles(snapshot.files);
       decorations.refreshForEditor(vscode.window.activeTextEditor as unknown as never);
-      focus.onSnapshot();
       void vscode.commands.executeCommand('setContext', CTX_VIEW_IS_TREE, snapshot.viewMode === 'tree');
     }
   });
 
-  for (const disposable of registerCommands({ vscode: vscode as unknown as never, coordinator, treeProvider: treeProvider as unknown as never, decorations: decorations as unknown as never, readOnly: readOnly as unknown as never, focus: focus as unknown as never })) {
+  for (const disposable of registerCommands({ vscode: vscode as unknown as never, coordinator, treeProvider: treeProvider as unknown as never, decorations: decorations as unknown as never, readOnly: readOnly as unknown as never })) {
     context.subscriptions.push(disposable as unknown as vscode.Disposable);
   }
 
@@ -79,14 +76,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.window.onDidChangeActiveTextEditor(async (editor) => {
       decorations.refreshForEditor(editor as unknown as never);
       await readOnly.syncActiveEditor();
-      await focus.onActiveEditorChanged(editor as unknown as never);
       coordinator.scheduleRefresh();
     }),
     vscode.workspace.createFileSystemWatcher('**/*')
   );
   const watcher = context.subscriptions[context.subscriptions.length - 1] as vscode.FileSystemWatcher;
   store.add({ dispose: () => watcher.dispose() });
-  store.add({ dispose: () => focus.dispose() });
   void store;
 
   await vscode.commands.executeCommand('setContext', CTX_VIEW_IS_TREE, true);
