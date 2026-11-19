@@ -14,14 +14,18 @@ import {
   CMD_SET_SCOPE_LAST_N,
   CMD_SHOW_FLAT_VIEW,
   CMD_SHOW_TREE_VIEW,
+  CMD_CLEAR_REVIEWED,
+  CMD_MARK_ALL_REVIEWED,
   CMD_TOGGLE_EDIT_MODE,
+  CMD_TOGGLE_REVIEWED,
   CMD_TOGGLE_VIEW_MODE,
   TEST_ENV_ENABLED,
   TEST_ENV_VAR
 } from '../config/identifiers';
 import { CHANGE_DIRECTION_NEXT, CHANGE_DIRECTION_PREVIOUS, DEFAULT_COMMIT_COUNT, MIN_COMMIT_COUNT } from '../config/constants';
+import { fileKeyOf } from '../application/ReviewCoordinator';
 import type { ReviewCoordinator } from '../application/ReviewCoordinator';
-import type { ReviewScope } from '../domain/models';
+import type { ChangedFile, ReviewScope } from '../domain/models';
 import { encodeBaseUri } from '../util/reviewUri';
 import { absoluteFromRoot, toPosixPath } from '../util/paths';
 import type { DiffDecorationManager } from './DiffDecorationManager';
@@ -150,6 +154,27 @@ export function registerCommands(context: CommandContext): VscodeLike[] {
     })
   );
 
+  disposables.push(
+    vscode.commands.registerCommand(CMD_TOGGLE_REVIEWED, async (item?: { id?: unknown }) => {
+      const key = resolveReviewedKey(vscode, coordinator, item);
+      if (key !== null) {
+        coordinator.toggleReviewed(key);
+      }
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_MARK_ALL_REVIEWED, () => {
+      coordinator.markAllReviewed();
+    })
+  );
+
+  disposables.push(
+    vscode.commands.registerCommand(CMD_CLEAR_REVIEWED, () => {
+      coordinator.clearReviewed();
+    })
+  );
+
   if (process.env[TEST_ENV_VAR] === TEST_ENV_ENABLED) {
     disposables.push(
       vscode.commands.registerCommand(CMD_INTERNAL_STATE, async () => buildTestSnapshot(vscode, coordinator, decorations, readOnly))
@@ -233,6 +258,14 @@ function findActiveChangedFile(
   vscode: VscodeLike,
   coordinator: ReviewCoordinator
 ): { repoRoot: string; baseCommit: string; relativePath: string; previousPath: string | null } | null {
+  const file = activeChangedFile(vscode, coordinator);
+  if (!file) {
+    return null;
+  }
+  return { repoRoot: file.repo.rootPath, baseCommit: file.baseCommit, relativePath: file.relativePath, previousPath: file.previousPath };
+}
+
+function activeChangedFile(vscode: VscodeLike, coordinator: ReviewCoordinator): ChangedFile | null {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.document.uri.scheme !== 'file') {
     return null;
@@ -241,10 +274,23 @@ function findActiveChangedFile(
   const snapshot = coordinator.getSnapshot();
   for (const file of snapshot.files) {
     if (toPosixPath(absoluteFromRoot(file.repo.rootPath, file.relativePath)) === fsPath) {
-      return { repoRoot: file.repo.rootPath, baseCommit: file.baseCommit, relativePath: file.relativePath, previousPath: file.previousPath };
+      return file;
     }
   }
   return null;
+}
+
+/**
+ * The reviewed key for a tree context-menu invocation is the tree item id
+ * (`repoId::relativePath`). Palette invocations fall back to the active
+ * editor's file in the current snapshot.
+ */
+function resolveReviewedKey(vscode: VscodeLike, coordinator: ReviewCoordinator, item?: { id?: unknown }): string | null {
+  if (typeof item?.id === 'string' && item.id !== '') {
+    return item.id;
+  }
+  const file = activeChangedFile(vscode, coordinator);
+  return file ? fileKeyOf(file) : null;
 }
 
 async function buildTestSnapshot(
@@ -261,6 +307,7 @@ async function buildTestSnapshot(
     scope: snapshot.scope,
     fileCount: snapshot.files.length,
     fileKeys: snapshot.files.map((file) => `${file.repo.id}::${toPosixPath(file.relativePath)}`),
+    reviewedKeys: [...coordinator.getReviewedKeys()],
     errors: snapshot.errors,
     files: snapshot.files.map((file) => ({
       repoRoot: file.repo.rootPath,
@@ -285,14 +332,27 @@ async function buildTestSnapshot(
   };
 }
 
-function serializeTree(node: { id: string; label: string; description: string; kind: string; children: readonly unknown[] }, parents: string[]): unknown {
-  const typed = node as { id: string; label: string; description: string; kind: string; children: readonly typeof node[] };
+interface SerializedTreeNode {
+  readonly id: string;
+  readonly label: string;
+  readonly description: string;
+  readonly kind: string;
+  readonly additions: number;
+  readonly deletions: number;
+  readonly reviewed: boolean;
+  readonly children: readonly SerializedTreeNode[];
+}
+
+function serializeTree(node: SerializedTreeNode, parents: string[]): unknown {
   return {
-    id: typed.id,
-    label: typed.label,
-    description: typed.description,
-    kind: typed.kind,
+    id: node.id,
+    label: node.label,
+    description: node.description,
+    kind: node.kind,
+    additions: node.additions,
+    deletions: node.deletions,
+    reviewed: node.reviewed,
     parentLabels: parents,
-    children: typed.children.map((child) => serializeTree(child, [...parents, typed.label]))
+    children: node.children.map((child) => serializeTree(child, [...parents, node.label]))
   };
 }

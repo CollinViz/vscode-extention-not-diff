@@ -1,5 +1,6 @@
 import type { ChangedFile, FileTreeNode, ViewMode } from './models';
 import { toPosixPath } from '../util/paths';
+import { EMPTY_COUNT } from '../config/constants';
 
 export function changedFileKey(repoId: string, relativePath: string): string {
   return `${repoId}::${toPosixPath(relativePath)}`;
@@ -27,7 +28,11 @@ function repoGroupSort(a: FileTreeNode, b: FileTreeNode): number {
   return a.label.localeCompare(b.label, undefined, LOCALE_COMPARE_OPTIONS);
 }
 
-export function buildTree(files: readonly ChangedFile[], mode: ViewMode): readonly FileTreeNode[] {
+export function buildTree(
+  files: readonly ChangedFile[],
+  mode: ViewMode,
+  reviewedKeys: ReadonlySet<string> = new Set<string>()
+): readonly FileTreeNode[] {
   const sorted = [...files].sort(compareFiles);
   if (mode === 'flat') {
     return sorted.map((file) =>
@@ -42,7 +47,10 @@ export function buildTree(files: readonly ChangedFile[], mode: ViewMode): readon
         collapsible: false,
         children: [],
         baseCommit: file.baseCommit,
-        previousPath: file.previousPath
+        previousPath: file.previousPath,
+        additions: file.additions,
+        deletions: file.deletions,
+        reviewed: reviewedKeys.has(changedFileKey(file.repo.id, file.relativePath))
       }) satisfies FileTreeNode
     );
   }
@@ -66,7 +74,7 @@ export function buildTree(files: readonly ChangedFile[], mode: ViewMode): readon
   for (const repoId of orderedRepoIds) {
     const repoFiles = byRepo.get(repoId) ?? [];
     const repoName = repoFiles[0]?.repo.name ?? repoId;
-    const children = buildRepoTree(repoId, repoName, repoFiles);
+    const children = buildRepoTree(repoId, repoName, repoFiles, reviewedKeys);
     if (singleRepo) {
       roots.push(...children);
     } else {
@@ -81,7 +89,10 @@ export function buildTree(files: readonly ChangedFile[], mode: ViewMode): readon
         collapsible: true,
         children,
         baseCommit: null,
-        previousPath: null
+        previousPath: null,
+        additions: EMPTY_COUNT,
+        deletions: EMPTY_COUNT,
+        reviewed: false
       };
       roots.push(repoNode);
     }
@@ -99,7 +110,7 @@ interface MutableDir {
   files: FileTreeNode[];
 }
 
-function buildRepoTree(repoId: string, repoName: string, files: readonly ChangedFile[]): FileTreeNode[] {
+function buildRepoTree(repoId: string, repoName: string, files: readonly ChangedFile[], reviewedKeys: ReadonlySet<string>): FileTreeNode[] {
   const root: MutableDir = { label: '', fullPath: '', dirs: new Map(), files: [] };
   for (const file of files) {
     const posix = toPosixPath(file.relativePath);
@@ -128,7 +139,10 @@ function buildRepoTree(repoId: string, repoName: string, files: readonly Changed
       collapsible: false,
       children: [],
       baseCommit: file.baseCommit,
-      previousPath: file.previousPath
+      previousPath: file.previousPath,
+      additions: file.additions,
+      deletions: file.deletions,
+      reviewed: reviewedKeys.has(changedFileKey(repoId, posix))
     });
   }
   return materializeDirs(root, repoId);
@@ -168,6 +182,9 @@ function compactDir(dir: MutableDir, repoId: string): FileTreeNode {
     collapsible: true,
     children,
     baseCommit: null,
-    previousPath: null
+    previousPath: null,
+    additions: EMPTY_COUNT,
+    deletions: EMPTY_COUNT,
+    reviewed: false
   };
 }

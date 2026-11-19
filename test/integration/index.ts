@@ -5,6 +5,7 @@ import { INTEGRATION_TIMEOUT_MS } from '../../src/config/constants';
 const SUITE_FILES = [
   'multiRepoTree.test.js',
   'flatListToggle.test.js',
+  'countsAndReviewed.test.js',
   'scopeSwitching.test.js',
   'readOnlyAndEdit.test.js',
   'diffEscapeHatch.test.js',

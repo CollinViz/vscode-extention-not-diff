@@ -1,5 +1,7 @@
 import {
   BASE_BRANCH_CANDIDATES,
+  EMPTY_COUNT,
+  FIRST_INDEX,
   GIT_EMPTY_TREE_HASH,
   GIT_HEAD,
   PORCELAIN_STATUS_PREFIX_LENGTH,
@@ -12,7 +14,7 @@ import {
   STATUS_UNMERGED,
   STATUS_UNTRACKED
 } from '../config/constants';
-import { highlightRanges, parseUnifiedDiff } from '../domain/DiffHunkParser';
+import { highlightRanges, parseUnifiedDiff, countDiffChanges, deletionAnchorsOf } from '../domain/DiffHunkParser';
 import { resolveBase } from '../domain/ScopeBaseResolver';
 import { compareFiles } from '../domain/FileTreeBuilder';
 import type {
@@ -122,6 +124,8 @@ export class GitChangeCollector implements IChangeCollector {
 
     const out: ChangedFile[] = [];
     for (const [relativePath, entry] of entries) {
+      let additions = EMPTY_COUNT;
+      let deletions = EMPTY_COUNT;
       const ranges: LineRange[] = [];
       const deletionAnchors: number[] = [];
       if (entry.kind === 'untracked') {
@@ -129,27 +133,34 @@ export class GitChangeCollector implements IChangeCollector {
         const text = await this.safeRead(absolute);
         if (text !== null) {
           const lineCount = countLines(text);
-          if (lineCount > 0) {
-            ranges.push({ start: 0, end: lineCount });
+          additions = lineCount;
+          if (lineCount > EMPTY_COUNT) {
+            ranges.push({ start: FIRST_INDEX, end: lineCount });
           }
         }
-      } else if (entry.kind !== 'deleted') {
+      } else {
         const unified = await this.git.exec(repo.rootPath, diffUnifiedZeroArgs(base, relativePath));
         if (unified.exitCode === 0) {
-          for (const range of highlightRanges(parseUnifiedDiff(unified.stdout))) {
-            ranges.push(range);
-          }
-          for (const hunk of parseUnifiedDiff(unified.stdout)) {
-            if (hunk.deletionAnchor !== null) {
-              deletionAnchors.push(hunk.deletionAnchor);
+          const hunks = parseUnifiedDiff(unified.stdout);
+          const counts = countDiffChanges(hunks);
+          additions = counts.additions;
+          deletions = counts.deletions;
+          if (entry.kind !== 'deleted') {
+            for (const range of highlightRanges(hunks)) {
+              ranges.push(range);
+            }
+            for (const anchor of deletionAnchorsOf(hunks)) {
+              deletionAnchors.push(anchor);
             }
           }
         }
-        const cached = await this.git.exec(repo.rootPath, diffCachedUnifiedZeroArgs(relativePath));
-        if (cached.exitCode === 0) {
-          for (const range of highlightRanges(parseUnifiedDiff(cached.stdout))) {
-            if (!ranges.some((existing) => existing.start === range.start && existing.end === range.end)) {
-              ranges.push(range);
+        if (entry.kind !== 'deleted') {
+          const cached = await this.git.exec(repo.rootPath, diffCachedUnifiedZeroArgs(relativePath));
+          if (cached.exitCode === 0) {
+            for (const range of highlightRanges(parseUnifiedDiff(cached.stdout))) {
+              if (!ranges.some((existing) => existing.start === range.start && existing.end === range.end)) {
+                ranges.push(range);
+              }
             }
           }
         }
@@ -162,7 +173,9 @@ export class GitChangeCollector implements IChangeCollector {
         statusFlags: [...entry.flags],
         baseCommit: base,
         ranges: mergeRanges(ranges),
-        deletionAnchors
+        deletionAnchors,
+        additions,
+        deletions
       });
     }
     return out.sort(compareFiles);

@@ -1,6 +1,11 @@
 import { EMPTY_COUNT, FIRST_INDEX, IMPLICIT_HUNK_COUNT, ONE_BASED_TO_ZERO_BASED_OFFSET } from '../config/constants';
 import type { DiffHunk, LineRange } from './models';
 
+export interface DiffLineCounts {
+  readonly additions: number;
+  readonly deletions: number;
+}
+
 const HUNK_HEADER_PATTERN = /@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
 export function parseUnifiedDiff(diffText: string): readonly DiffHunk[] {
@@ -64,4 +69,30 @@ export function parseUnifiedDiff(diffText: string): readonly DiffHunk[] {
 
 export function highlightRanges(hunks: readonly DiffHunk[]): readonly LineRange[] {
   return hunks.flatMap((hunk) => (hunk.highlight === null ? [] : [hunk.highlight]));
+}
+
+/**
+ * Exact per-file +/− counts from zero-context hunks. With `--unified=0` a hunk
+ * body contains only changed lines, so the header counts are the numstat
+ * numbers: newCount = added lines, oldCount = deleted lines.
+ */
+export function countDiffChanges(hunks: readonly DiffHunk[]): DiffLineCounts {
+  let additions = EMPTY_COUNT;
+  let deletions = EMPTY_COUNT;
+  for (const hunk of hunks) {
+    additions += hunk.newCount;
+    deletions += hunk.oldCount;
+  }
+  return { additions, deletions };
+}
+
+/** Anchors of pure-deletion hunks, in file order. */
+export function deletionAnchorsOf(hunks: readonly DiffHunk[]): readonly number[] {
+  const anchors: number[] = [];
+  for (const hunk of hunks) {
+    if (hunk.deletionAnchor !== null) {
+      anchors.push(hunk.deletionAnchor);
+    }
+  }
+  return anchors;
 }

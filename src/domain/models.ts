@@ -39,6 +39,8 @@ export interface ChangedFile {
   readonly baseCommit: string;
   readonly ranges: readonly LineRange[];
   readonly deletionAnchors: readonly number[];
+  readonly additions: number;
+  readonly deletions: number;
 }
 
 export interface FileTreeNode {
@@ -53,6 +55,9 @@ export interface FileTreeNode {
   readonly children: readonly FileTreeNode[];
   readonly baseCommit: string | null;
   readonly previousPath: string | null;
+  readonly additions: number;
+  readonly deletions: number;
+  readonly reviewed: boolean;
 }
 
 export interface CommitRef {

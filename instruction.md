@@ -1279,3 +1279,32 @@ The review highlights must look exactly like the built-in diff editor.
 - **Fix — reuse the diff editor's own theme tokens** (`src/config/identifiers.ts`): `COLOR_CHANGED_LINE_BG = 'diffEditor.insertedLineBackground'` is the translucent token the diff editor paints over the editor background (dark themes `#28413B`, light `#DCFEDC`), so review highlights composite to the same color the user can sample from the diff view in any theme. Added, modified, and untracked ranges all share one decoration type.
 - **Contiguous gutter bar** (`media/gutter-changed.svg`): replaced the centered rounded rect (pips) with a full-height `3×16` solid bar so consecutive decorated lines stack into one continuous bar, like VS Code SCM. `CHANGE_BAR_COLOR = '#3B82F6'` (`src/config/constants.ts`) is the single source for the bar fill, the SVG, and the `overviewRulerColor` marks.
 - **Cleanup**: the now-unused `contributes.colors` block was removed; custom color overrides are unnecessary because the built-in tokens respond to `workbench.colorCustomizations`.
+
+---
+
+## 22. Amendment D — v0.3: per-file `+/−` counts and session-only reviewed state
+
+v0.3 lifts two of the deliberate v0.1 exclusions (the "no reviewed" rule of §0.5 and the no-counts tree), in the narrow form the market research in `maybeToDo.md` justifies. Everything else about the no-metadata rule still holds: nothing is written to disk, `workspaceState`, or the git index.
+
+### 22.1 Per-file `+/−` counts in the tree
+
+- **Domain** (`src/domain/DiffHunkParser.ts`): `countDiffChanges(hunks): DiffLineCounts` sums `newCount`/`oldCount` over hunks. With `--unified=0` a hunk body contains only changed lines, so header counts are the numstat numbers — no line-by-line counting, no extra git calls. `deletionAnchorsOf(hunks)` extracts pure-deletion anchors (the collector's inline loop moved here so there is one implementation).
+- **Model**: `ChangedFile` gained `additions`/`deletions`; `FileTreeNode` gained `additions`/`deletions`/`reviewed`. Directory and repo nodes carry zeros/`false`.
+- **Collector** (`src/infrastructure/GitChangeCollector.ts`): counts come from the base-vs-worktree `-U0` diff, which already includes staged and unstaged changes combined, so the `--cached` diff is used for ranges only (as before) and never for counts. Untracked files count their on-disk lines (`additions = lineCount, deletions = 0`); deleted files are now diffed (base vs missing worktree file) to get their deletion count, but still produce no ranges or anchors.
+- **Presentation** (`src/presentation/treeItemFactory.ts`): file rows show `✓ repo · +18 -2` in `description` (mark only when reviewed); tooltip gains the counts and a `Reviewed (this session)` suffix. `formatLineCounts`/`fileNodeDescription` are the single formatters.
+
+### 22.2 Session-only reviewed state
+
+- **Port** (`src/domain/ports.ts`): `IReviewStateStore` gained `getReviewedKeys(): ReadonlySet<string>`, `markReviewed`, `unmarkReviewed`, `clearReviewed`. The memory store keeps a `Set<string>` of `repoId::relativePath` keys — in-memory only, gone on reload by design.
+- **Coordinator** (`src/application/ReviewCoordinator.ts`): `toggleReviewed(key)`, `markAllReviewed()`, `clearReviewed()` mutate the store and re-emit a snapshot; `buildTree` receives `getReviewedKeys()` so reviewed flags ride the normal snapshot path (no second event channel, no tree mutation at the presentation layer). Keys survive live refreshes and scope round-trips; stale keys are harmless because they match no node. `getReviewedKeys()` is exposed for the test snapshot.
+- **Commands** (`src/config/identifiers.ts`, `src/presentation/CommandRegistrar.ts`, contributed in `package.json`):
+  - `review-surface.toggleReviewed` ("Review: Toggle Reviewed (this session)", `$(check)`) — from the tree item context menu (`view/item/context`, `viewItem =~ /^reviewSurface\.file/`, works on both `reviewSurface.file` and `reviewSurface.file.reviewed`); palette invocations fall back to the active editor's file. The tree item id **is** the reviewed key, so no new key format exists.
+  - `review-surface.markAllReviewed` ("Review: Mark All Reviewed (this session)", `$(check-all)`) — palette.
+  - `review-surface.clearReviewed` ("Review: Clear Reviewed State", `$(clear-all)`) — palette.
+  - Reviewed file items get `contextValue: 'reviewSurface.file.reviewed'`.
+- **Test seams**: the internal snapshot gains `reviewedKeys`, and `review-surface.internal.getTree` serializes `additions`/`deletions`/`reviewed` per node.
+- **Tests**: unit — `countDiffChanges` (multi-hunk, implicit counts, empty/binary), anchors collection, tree counts + reviewed propagation (both modes, omitted-set default), coordinator toggle/mark-all/clear/refresh-persistence/count plumbing (the obsolete compile-time "store has no reviewed API" guard is superseded by this amendment and removed). Integration — `countsAndReviewed.test.ts` (registered in `SUITE_FILES`): counts match git truth (`random.ts` = `+1 -1` dirty modify, the rest `+1 -0`), one-file toggle on/off, mark-all/clear round-trip; the suite clears state in `after` so later suites see none.
+
+### 22.3 What was deliberately not added
+
+No persistence across sessions, no per-directory reviewed aggregates, no "collapse reviewed files" behavior, no review timestamps. Those belong to the v0.4+ roadmap (`maybeToDo.md`), not to this release.

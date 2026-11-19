@@ -24,6 +24,19 @@ const CHANGE_KIND_THEME_ICON: Record<ChangeKind, string> = {
   unmerged: 'warning'
 };
 
+const REVIEWED_MARK = '✓';
+const REVIEWED_TOOLTIP_SUFFIX = ' · Reviewed (this session)';
+
+export function formatLineCounts(additions: number, deletions: number): string {
+  return `+${additions} -${deletions}`;
+}
+
+export function fileNodeDescription(node: FileTreeNode): string {
+  const badge = node.description === '' ? '' : `${node.description} · `;
+  const mark = node.reviewed ? `${REVIEWED_MARK} ` : '';
+  return `${mark}${badge}${formatLineCounts(node.additions, node.deletions)}`;
+}
+
 export function changeKindIcon(changeKind: ChangeKind | null): string {
   if (changeKind === null) {
     return 'folder';
@@ -35,9 +48,9 @@ export function toTreeItem(vscode: VscodeLike, node: FileTreeNode): VscodeLike {
   if (node.kind === 'file') {
     const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.None);
     item.id = node.id;
-    item.description = node.description;
-    item.tooltip = `${node.description} · ${node.relativePath ?? node.label} · ${node.changeKind ?? ''}`;
-    item.contextValue = 'reviewSurface.file';
+    item.description = fileNodeDescription(node);
+    item.tooltip = `${node.description} · ${node.relativePath ?? node.label} · ${node.changeKind ?? ''} · ${formatLineCounts(node.additions, node.deletions)}${node.reviewed ? REVIEWED_TOOLTIP_SUFFIX : ''}`;
+    item.contextValue = node.reviewed ? 'reviewSurface.file.reviewed' : 'reviewSurface.file';
     const repoRoot = node.repoId ?? '';
     if (repoRoot !== '' && node.relativePath && node.changeKind !== 'deleted') {
       try {

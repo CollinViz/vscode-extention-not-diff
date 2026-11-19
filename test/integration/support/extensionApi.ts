@@ -17,6 +17,7 @@ export interface TestSnapshot {
   readonly scope: unknown;
   readonly fileCount: number;
   readonly fileKeys: string[];
+  readonly reviewedKeys: string[];
   readonly errors: string[];
   readonly files: TestFileEntry[];
   readonly tree: TestTreeNode[];
@@ -35,6 +36,9 @@ export interface TestTreeNode {
   readonly label: string;
   readonly description: string;
   readonly kind: string;
+  readonly additions: number;
+  readonly deletions: number;
+  readonly reviewed: boolean;
   readonly parentLabels: string[];
   readonly children: TestTreeNode[];
 }

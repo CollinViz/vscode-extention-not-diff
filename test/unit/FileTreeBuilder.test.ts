@@ -6,7 +6,12 @@ function repo(id: string, name: string): RepositoryDescriptor {
   return { id, name, rootPath: id, hasHead: true, upstreamRef: null };
 }
 
-function file(repoDesc: RepositoryDescriptor, relativePath: string, kind: ChangeKind = 'modified'): ChangedFile {
+function file(
+  repoDesc: RepositoryDescriptor,
+  relativePath: string,
+  kind: ChangeKind = 'modified',
+  counts: { additions: number; deletions: number } = { additions: 0, deletions: 0 }
+): ChangedFile {
   return {
     repo: repoDesc,
     relativePath,
@@ -15,7 +20,9 @@ function file(repoDesc: RepositoryDescriptor, relativePath: string, kind: Change
     statusFlags: [kind],
     baseCommit: 'base',
     ranges: [],
-    deletionAnchors: []
+    deletionAnchors: [],
+    additions: counts.additions,
+    deletions: counts.deletions
   };
 }
 
@@ -124,4 +131,47 @@ describe('FileTreeBuilder', () => {
     expect(fileKeys(buildTree(files, 'tree'))).toHaveLength(1);
     expect(fileKeys(buildTree(files, 'flat'))).toHaveLength(1);
   });
+
+  it('carries per-file +/− counts on file nodes in both modes', () => {
+    const repoA = repo('/repoA', 'repoA');
+    const files = [
+      file(repoA, 'src/index.ts', 'modified', { additions: 18, deletions: 2 }),
+      file(repoA, 'notes/todo.ts', 'untracked', { additions: 7, deletions: 0 })
+    ];
+    const treeFiles = collectFileNodes(buildTree(files, 'tree'));
+    const flatFiles = collectFileNodes(buildTree(files, 'flat'));
+    expect(treeFiles.find((node) => node.label === 'index.ts')).toMatchObject({ additions: 18, deletions: 2 });
+    expect(flatFiles.find((node) => node.label === 'src/index.ts')).toMatchObject({ additions: 18, deletions: 2 });
+    expect(collectFileNodes(buildTree(files, 'tree')).find((node) => node.label === 'todo.ts')).toMatchObject({ additions: 7, deletions: 0 });
+  });
+
+  it('marks reviewed keys on matching file nodes only', () => {
+    const repoA = repo('/repoA', 'repoA');
+    const files = [file(repoA, 'src/index.ts'), file(repoA, 'src/other.ts')];
+    const reviewed = new Set([changedFileKey('/repoA', 'src/index.ts')]);
+    const treeFiles = collectFileNodes(buildTree(files, 'tree', reviewed));
+    expect(treeFiles.find((node) => node.label === 'index.ts')?.reviewed).toBe(true);
+    expect(treeFiles.find((node) => node.label === 'other.ts')?.reviewed).toBe(false);
+    expect(collectFileNodes(buildTree(files, 'flat', reviewed)).find((node) => node.label === 'src/index.ts')?.reviewed).toBe(true);
+  });
+
+  it('defaults to no reviewed files when the set is omitted', () => {
+    const repoA = repo('/repoA', 'repoA');
+    const treeFiles = collectFileNodes(buildTree([file(repoA, 'src/index.ts')], 'tree'));
+    expect(treeFiles.every((node) => !node.reviewed)).toBe(true);
+  });
 });
+
+function collectFileNodes(nodes: readonly FileTreeNode[]): FileTreeNode[] {
+  const out: FileTreeNode[] = [];
+  const walk = (list: readonly FileTreeNode[]): void => {
+    for (const node of list) {
+      if (node.kind === 'file') {
+        out.push(node);
+      }
+      walk(node.children);
+    }
+  };
+  walk(nodes);
+  return out;
+}

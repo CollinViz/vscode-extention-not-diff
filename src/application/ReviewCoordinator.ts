@@ -70,6 +70,10 @@ export class ReviewCoordinator {
     return this.buildSnapshot();
   }
 
+  getReviewedKeys(): ReadonlySet<string> {
+    return this.store.getReviewedKeys();
+  }
+
   async refresh(): Promise<void> {
     const repos = await this.discovery.discover();
     const scope = this.store.getScope();
@@ -120,6 +124,27 @@ export class ReviewCoordinator {
     this.emit();
   }
 
+  toggleReviewed(key: string): void {
+    if (this.store.getReviewedKeys().has(key)) {
+      this.store.unmarkReviewed(key);
+    } else {
+      this.store.markReviewed(key);
+    }
+    this.emit();
+  }
+
+  markAllReviewed(): void {
+    for (const file of this.lastFiles) {
+      this.store.markReviewed(fileKeyOf(file));
+    }
+    this.emit();
+  }
+
+  clearReviewed(): void {
+    this.store.clearReviewed();
+    this.emit();
+  }
+
   dispose(): void {
     this.debounced.dispose();
   }
@@ -132,7 +157,7 @@ export class ReviewCoordinator {
       scopeLabel: formatScopeLabel(scope),
       viewMode,
       files: this.lastFiles,
-      tree: buildTree(this.lastFiles, viewMode),
+      tree: buildTree(this.lastFiles, viewMode, this.store.getReviewedKeys()),
       errors: this.lastErrors
     };
   }

@@ -9,6 +9,9 @@ a safe **read-only** posture. Flip to edit mode with `Alt+R` whenever you need
 to type; highlights stay on.
 
 - **One Changed Files view** for all repos (pruned directory tree + flat-list toggle)
+- **Per-file `+adds / -dels` counts** and a **session-only “Reviewed” toggle**
+  (right-click a file → *Toggle Reviewed*, or *Mark All Reviewed* / *Clear
+  Reviewed State* from the command palette — nothing is persisted)
 - **Current branch scope by default** (base = merge-base with `origin/master`/`main`/…),
   plus Last-N and date-range scopes; staged, unstaged, untracked and unpushed
   changes are always included

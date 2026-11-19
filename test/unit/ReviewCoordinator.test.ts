@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { ReviewCoordinator } from '../../src/application/ReviewCoordinator';
+import { ReviewCoordinator, fileKeyOf } from '../../src/application/ReviewCoordinator';
 import { PRESET_LAST_WEEK } from '../../src/config/constants';
-import type { ChangedFile, RepositoryDescriptor, ReviewScope } from '../../src/domain/models';
-import type { IChangeCollector, IClock, IRepositoryDiscovery, IReviewStateStore } from '../../src/domain/ports';
+import type { ChangedFile, FileTreeNode, RepositoryDescriptor, ReviewScope } from '../../src/domain/models';
+import type { IChangeCollector, IClock, IRepositoryDiscovery } from '../../src/domain/ports';
 import { MemoryReviewStateStore } from '../../src/infrastructure/MemoryReviewStateStore';
 import { FakeClock } from './helpers/fakeGit';
 
@@ -10,7 +10,11 @@ function repo(id: string, name: string): RepositoryDescriptor {
   return { id, name, rootPath: id, hasHead: true, upstreamRef: null };
 }
 
-function makeFile(repoDesc: RepositoryDescriptor, relativePath: string): ChangedFile {
+function makeFile(
+  repoDesc: RepositoryDescriptor,
+  relativePath: string,
+  counts: { additions: number; deletions: number } = { additions: 0, deletions: 0 }
+): ChangedFile {
   return {
     repo: repoDesc,
     relativePath,
@@ -19,7 +23,9 @@ function makeFile(repoDesc: RepositoryDescriptor, relativePath: string): Changed
     statusFlags: ['modified'],
     baseCommit: 'base',
     ranges: [],
-    deletionAnchors: []
+    deletionAnchors: [],
+    additions: counts.additions,
+    deletions: counts.deletions
   };
 }
 
@@ -37,15 +43,6 @@ class FakeCollector implements IChangeCollector {
     this.calls.push({ repos, scope });
     return { files: this.files, errors: this.errors };
   }
-}
-
-type NoReviewedKeys<T> = {
-  [K in keyof T]: K extends `review${string}` | `approv${string}` | `done${string}` | `checkbox${string}` ? never : K;
-}[keyof T];
-
-function assertStoreHasNoReviewedApi(store: IReviewStateStore): NoReviewedKeys<IReviewStateStore> | null {
-  void store;
-  return null;
 }
 
 describe('ReviewCoordinator', () => {
@@ -106,14 +103,63 @@ describe('ReviewCoordinator', () => {
     expect(collector.calls).toHaveLength(1);
   });
 
-  it('does not filter files and store has no reviewed API', async () => {
+  it('does not filter files from the snapshot', async () => {
     const repoA = repo('/a', 'a');
     const files = [makeFile(repoA, 'one.ts'), makeFile(repoA, 'two.ts'), makeFile(repoA, 'three.ts')];
-    const store = new MemoryReviewStateStore();
-    expect(assertStoreHasNoReviewedApi(store)).toBeNull();
-    const coordinator = new ReviewCoordinator(store, new FakeDiscovery([repoA]), new FakeCollector(files), new FakeClock(new Date()), 300);
+    const coordinator = new ReviewCoordinator(new MemoryReviewStateStore(), new FakeDiscovery([repoA]), new FakeCollector(files), new FakeClock(new Date()), 300);
     await coordinator.refresh();
     expect(coordinator.getSnapshot().files).toHaveLength(3);
+  });
+
+  it('toggles session-only reviewed state without touching the collector', async () => {
+    const repoA = repo('/a', 'a');
+    const files = [makeFile(repoA, 'one.ts', { additions: 5, deletions: 1 }), makeFile(repoA, 'two.ts')];
+    const collector = new FakeCollector(files);
+    const coordinator = new ReviewCoordinator(new MemoryReviewStateStore(), new FakeDiscovery([repoA]), collector, new FakeClock(new Date()), 300);
+    await coordinator.refresh();
+    expect(collector.calls).toHaveLength(1);
+
+    const key = fileKeyOf(files[0]!);
+    coordinator.toggleReviewed(key);
+    expect(coordinator.getReviewedKeys()).toEqual(new Set([key]));
+    expect(treeFileNode(coordinator, 'one.ts')?.reviewed).toBe(true);
+    expect(treeFileNode(coordinator, 'two.ts')?.reviewed).toBe(false);
+
+    coordinator.toggleReviewed(key);
+    expect(coordinator.getReviewedKeys().size).toBe(0);
+  });
+
+  it('marks all files reviewed and clears again', async () => {
+    const repoA = repo('/a', 'a');
+    const files = [makeFile(repoA, 'one.ts'), makeFile(repoA, 'two.ts'), makeFile(repoA, 'three.ts')];
+    const coordinator = new ReviewCoordinator(new MemoryReviewStateStore(), new FakeDiscovery([repoA]), new FakeCollector(files), new FakeClock(new Date()), 300);
+    await coordinator.refresh();
+    coordinator.markAllReviewed();
+    expect(coordinator.getReviewedKeys()).toEqual(new Set(files.map(fileKeyOf)));
+    expect(coordinator.getSnapshot().tree.every((node) => node.kind !== 'file' || node.reviewed)).toBe(true);
+    coordinator.clearReviewed();
+    expect(coordinator.getReviewedKeys().size).toBe(0);
+  });
+
+  it('keeps reviewed keys across a live refresh of the same files', async () => {
+    const repoA = repo('/a', 'a');
+    const files = [makeFile(repoA, 'one.ts')];
+    const collector = new FakeCollector(files);
+    const coordinator = new ReviewCoordinator(new MemoryReviewStateStore(), new FakeDiscovery([repoA]), collector, new FakeClock(new Date()), 300);
+    await coordinator.refresh();
+    coordinator.toggleReviewed(fileKeyOf(files[0]!));
+    await coordinator.refresh();
+    expect(coordinator.getReviewedKeys()).toEqual(new Set([fileKeyOf(files[0]!)]));
+    expect(treeFileNode(coordinator, 'one.ts')?.reviewed).toBe(true);
+  });
+
+  it('builds tree nodes with the per-file counts the collector reported', async () => {
+    const repoA = repo('/a', 'a');
+    const files = [makeFile(repoA, 'one.ts', { additions: 12, deletions: 3 })];
+    const coordinator = new ReviewCoordinator(new MemoryReviewStateStore(), new FakeDiscovery([repoA]), new FakeCollector(files), new FakeClock(new Date()), 300);
+    await coordinator.refresh();
+    const node = treeFileNode(coordinator, 'one.ts');
+    expect(node).toMatchObject({ additions: 12, deletions: 3, reviewed: false });
   });
 
   it('isolates repo errors', async () => {
@@ -130,3 +176,20 @@ describe('ReviewCoordinator', () => {
     expect(clock.now().getFullYear()).toBe(2026);
   });
 });
+
+function treeFileNode(coordinator: ReviewCoordinator, relativePath: string): FileTreeNode | null {
+  return findFileNode(coordinator.getSnapshot().tree, relativePath);
+}
+
+function findFileNode(nodes: readonly FileTreeNode[], relativePath: string): FileTreeNode | null {
+  for (const node of nodes) {
+    if (node.kind === 'file' && node.relativePath === relativePath) {
+      return node;
+    }
+    const nested = findFileNode(node.children, relativePath);
+    if (nested) {
+      return nested;
+    }
+  }
+  return null;
+}

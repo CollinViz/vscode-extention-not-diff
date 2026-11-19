@@ -32,6 +32,11 @@ export interface IReviewStateStore {
   setScope(scope: ReviewScope): void;
   getViewMode(): ViewMode;
   setViewMode(mode: ViewMode): void;
+  /** Session-only reviewed keys (`repoId::relativePath`). Never persisted. */
+  getReviewedKeys(): ReadonlySet<string>;
+  markReviewed(key: string): void;
+  unmarkReviewed(key: string): void;
+  clearReviewed(): void;
 }
 
 export interface IChangeCollector {

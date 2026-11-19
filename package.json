@@ -2,7 +2,7 @@
   "name": "review-surface",
   "displayName": "Review Surface",
   "description": "Unified live review of Git changes in the working editor, read-only by default.",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "publisher": "collinviz",
   "repository": {
     "type": "git",
@@ -37,7 +37,10 @@
     "onCommand:review-surface.enableEditMode",
     "onCommand:review-surface.enableReadOnly",
     "onCommand:review-surface.nextChange",
-    "onCommand:review-surface.previousChange"
+    "onCommand:review-surface.previousChange",
+    "onCommand:review-surface.toggleReviewed",
+    "onCommand:review-surface.markAllReviewed",
+    "onCommand:review-surface.clearReviewed"
   ],
   "scripts": {
     "compile": "tsc -p tsconfig.json --noEmit",
@@ -156,6 +159,24 @@
         "title": "Review: Go to Previous Change",
         "category": "Review Surface",
         "icon": "$(arrow-up)"
+      },
+      {
+        "command": "review-surface.toggleReviewed",
+        "title": "Review: Toggle Reviewed (this session)",
+        "category": "Review Surface",
+        "icon": "$(check)"
+      },
+      {
+        "command": "review-surface.markAllReviewed",
+        "title": "Review: Mark All Reviewed (this session)",
+        "category": "Review Surface",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "review-surface.clearReviewed",
+        "title": "Review: Clear Reviewed State",
+        "category": "Review Surface",
+        "icon": "$(clear-all)"
       }
     ],
     "menus": {
@@ -220,6 +241,13 @@
           "group": "review@1"
         }
       ],
+      "view/item/context": [
+        {
+          "command": "review-surface.toggleReviewed",
+          "when": "view == review-surface.changes && viewItem =~ /^reviewSurface\\.file/",
+          "group": "review@1"
+        }
+      ],
       "commandPalette": [
         {
           "command": "review-surface.openFile",
@@ -240,6 +268,10 @@
         {
           "command": "review-surface.enableReadOnly",
           "when": "false"
+        },
+        {
+          "command": "review-surface.toggleReviewed",
+          "when": "reviewSurface.isReviewFile"
         }
       ]
     },
