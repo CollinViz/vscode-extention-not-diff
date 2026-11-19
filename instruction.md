@@ -1268,3 +1268,14 @@ Change-hopping like the built-in diff editor (`F7` / `Shift+F7`), from the revie
 - Opening a changed file shows the **current** file in a normal editor, whole-line background tint on added/modified lines, gutter + overview ruler, read-only until the user toggles edit, and highlights survive that toggle.
 - Diff view opens only through the escape hatches, using `review-surface-base:` vs the file uri.
 - One tree lists every repo in the workspace, pruned, with a flat-list toggle and a visible scope control for last N and date ranges, always including unstaged, staged, untracked, and unpushed changes.
+
+---
+
+## 21. Amendment C — diff-faithful line highlights and contiguous gutter bar
+
+The review highlights must look exactly like the built-in diff editor.
+
+- **Root cause of the invisible background.** `contributes.colors` accepts only hex (`#RRGGBBAA`) defaults; the previous manifest used `rgba(...)` strings, so VS Code dropped the colors, the `ThemeColor` ids resolved to nothing, and no background painted (the gutter icon still painted because it is a plain file reference).
+- **Fix — reuse the diff editor's own theme tokens** (`src/config/identifiers.ts`): `COLOR_CHANGED_LINE_BG = 'diffEditor.insertedLineBackground'` is the translucent token the diff editor paints over the editor background (dark themes `#28413B`, light `#DCFEDC`), so review highlights composite to the same color the user can sample from the diff view in any theme. Added, modified, and untracked ranges all share one decoration type.
+- **Contiguous gutter bar** (`media/gutter-changed.svg`): replaced the centered rounded rect (pips) with a full-height `3×16` solid bar so consecutive decorated lines stack into one continuous bar, like VS Code SCM. `CHANGE_BAR_COLOR = '#3B82F6'` (`src/config/constants.ts`) is the single source for the bar fill, the SVG, and the `overviewRulerColor` marks.
+- **Cleanup**: the now-unused `contributes.colors` block was removed; custom color overrides are unnecessary because the built-in tokens respond to `workbench.colorCustomizations`.

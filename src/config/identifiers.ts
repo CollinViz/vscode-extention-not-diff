@@ -25,8 +25,12 @@ export const CTX_VIEW_IS_TREE = 'reviewSurface.viewIsTree';
 export const CFG_DEFAULT_COMMIT_COUNT = 'reviewSurface.defaultCommitCount';
 export const CFG_DEBOUNCE_MS = 'reviewSurface.debounceRefreshMs';
 
-export const COLOR_ADDED_LINE_BG = 'reviewSurface.addedLineBackground';
-export const COLOR_MODIFIED_LINE_BG = 'reviewSurface.modifiedLineBackground';
+/**
+ * Built-in VS Code diff editor theme colors. Reusing them makes review
+ * highlights identical to the diff editor in every theme, including the
+ * translucency the diff editor uses (colors blend with the editor background).
+ */
+export const COLOR_CHANGED_LINE_BG = 'diffEditor.insertedLineBackground';
 
 export const SCHEME_BASE = 'review-surface-base';
 

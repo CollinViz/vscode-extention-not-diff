@@ -91,6 +91,8 @@ export const CHANGE_DIRECTION_NEXT = 'next';
 export const CHANGE_DIRECTION_PREVIOUS = 'previous';
 
 export const ICON_GUTTER_CHANGED = 'gutter-changed.svg';
+/** Solid blue of the changed-line gutter bar and overview ruler marks. */
+export const CHANGE_BAR_COLOR = '#3B82F6';
 export const BASE_BRANCH_CANDIDATES: readonly string[] = ['origin/master', 'origin/main', 'master', 'main'];
 export const ISO_DATE_PREFIX_LENGTH = 10;
 export const ISO_DATE_PREFIX_START = 0;

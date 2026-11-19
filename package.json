@@ -2,7 +2,7 @@
   "name": "review-surface",
   "displayName": "Review Surface",
   "description": "Unified live review of Git changes in the working editor, read-only by default.",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "collinviz",
   "repository": {
     "type": "git",
@@ -267,28 +267,6 @@
         "key": "shift+f7",
         "mac": "shift+f7",
         "when": "editorTextFocus && reviewSurface.isReviewFile"
-      }
-    ],
-    "colors": [
-      {
-        "id": "reviewSurface.addedLineBackground",
-        "description": "Background tint for added lines in Review Surface (alpha from ADDED_LINE_ALPHA).",
-        "defaults": {
-          "dark": "rgba(46, 160, 67, 0.28)",
-          "light": "rgba(46, 160, 67, 0.22)",
-          "highContrast": "rgba(46, 160, 67, 0.35)",
-          "highContrastLight": "rgba(46, 160, 67, 0.35)"
-        }
-      },
-      {
-        "id": "reviewSurface.modifiedLineBackground",
-        "description": "Background tint for modified lines in Review Surface (alpha from MODIFIED_LINE_ALPHA).",
-        "defaults": {
-          "dark": "rgba(56, 139, 253, 0.28)",
-          "light": "rgba(9, 105, 218, 0.20)",
-          "highContrast": "rgba(56, 139, 253, 0.35)",
-          "highContrastLight": "rgba(9, 105, 218, 0.35)"
-        }
       }
     ],
     "configuration": {
